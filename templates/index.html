@@ -92,8 +92,9 @@
         .op-add i{color:#8b5cf6} .op-security i{color:#06b6d4} .op-compress i{color:#14b8a6} .op-image i{color:#a78bfa}
 
         /* Options Panels */
-        .options-panel { display:none; background:rgba(255,255,255,.03); border-radius:16px; padding:20px; margin-bottom:25px; border:1px solid rgba(255,255,255,.08); }
-        .options-panel.show { display:block; animation:fadeIn .3s ease; }
+        .options-panel { display:none; background:rgba(99,102,241,.06); border-radius:16px; padding:22px; margin-bottom:25px; border:1px solid rgba(99,102,241,.25); }
+        .options-panel.show { display:block; animation:panelPop .3s ease; box-shadow: 0 0 0 3px rgba(99,102,241,.15); }
+        @keyframes panelPop { 0%{opacity:0;transform:translateY(-8px) scale(.98)} 100%{opacity:1;transform:translateY(0) scale(1)} }
         .options-title { font-size:.95rem; font-weight:600; margin-bottom:15px; color:var(--primary-light); }
         .form-group { margin-bottom:15px; }
         .form-group label { display:block; font-size:.85rem; font-weight:500; margin-bottom:8px; color:rgba(255,255,255,.8); }
@@ -121,6 +122,9 @@
         .btn-primary { background:var(--gradient); color:white; box-shadow:0 10px 30px rgba(99,102,241,.4); }
         .btn-primary:hover { transform:translateY(-2px); box-shadow:0 15px 40px rgba(99,102,241,.5); }
         .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+        /* Botão executar flutua quando visível */
+        .execute-wrap { position:sticky; bottom:16px; z-index:10; margin-top:5px; margin-bottom:25px; }
+        .execute-wrap .btn { box-shadow: 0 8px 30px rgba(99,102,241,.5); }
         .btn-success { background:var(--gradient-success); color:white; box-shadow:0 10px 30px rgba(16,185,129,.4); }
         .btn-outline { background:transparent; border:2px solid rgba(255,255,255,.2); color:white; }
         .btn-outline:hover { background:rgba(255,255,255,.1); }
@@ -597,9 +601,11 @@
                 </div>
 
                 <!-- Execute Button -->
-                <button class="btn btn-primary" id="btnExecutar" disabled>
-                    <i class="fas fa-play"></i> <span data-i18n="btnExecute">Executar Operação</span>
-                </button>
+                <div class="execute-wrap">
+                    <button class="btn btn-primary" id="btnExecutar" disabled>
+                        <i class="fas fa-play"></i> <span data-i18n="btnExecute">Executar Operação</span>
+                    </button>
+                </div>
 
                 <!-- Results -->
                 <div class="results" id="results">
@@ -704,6 +710,7 @@
 
     <div class="footer">
         <p><span data-i18n="footer">Feito com</span> <i class="fas fa-heart" style="color:#ec4899"></i> Python + Flask &bull; v2.0</p>
+        <p style="margin-top:8px;font-size:.8rem;color:rgba(255,255,255,.3)">Desenvolvido por <strong style="color:rgba(255,255,255,.5)">Marcio Goes do Nascimento</strong></p>
     </div>
 </div>
 
@@ -1021,8 +1028,12 @@ document.querySelectorAll('.operation-btn').forEach(btn => {
             editar_metadados:'optEditarMetadados', proteger:'optProteger',
             remover_senha:'optRemoverSenha', comprimir:'optComprimir'
         };
-        if (map[currentOperation]) document.getElementById(map[currentOperation]).classList.add('show');
-        updateExecuteButton();
+        if (map[currentOperation]) {
+            const panel = document.getElementById(map[currentOperation]);
+                    panel.classList.add('show');
+                    setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+                }
+                updateExecuteButton();
     });
 });
 
