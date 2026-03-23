@@ -5,9 +5,14 @@
 
 from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-import os, shutil, base64, io, zipfile, uuid
+import os, shutil, base64, io, zipfile, uuid, sqlite3, threading
 from datetime import datetime
 from PyPDF2 import PdfReader, PdfWriter, PdfMerger
+try:
+    import requests as req_lib
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
@@ -16,6 +21,78 @@ app.config['OUTPUT_FOLDER'] = 'outputs'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf'}
+
+# ─── Auditoria (SQLite) ───────────────────────────────────────────────────────
+AUDIT_DB = 'auditoria.db'
+AUDIT_PASSWORD = os.environ.get('AUDIT_PASSWORD', 'admin123')
+
+def init_audit_db():
+    conn = sqlite3.connect(AUDIT_DB)
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS acessos (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts        TEXT    NOT NULL,
+            ip        TEXT,
+            pais      TEXT,
+            regiao    TEXT,
+            cidade    TEXT,
+            lat       REAL,
+            lon       REAL,
+            isp       TEXT,
+            rota      TEXT,
+            metodo    TEXT,
+            operacao  TEXT,
+            filename  TEXT,
+            status    INTEGER,
+            user_agent TEXT
+        )
+    ''')
+    conn.commit(); conn.close()
+
+init_audit_db()
+
+def get_real_ip():
+    for h in ('X-Forwarded-For', 'X-Real-IP', 'CF-Connecting-IP'):
+        v = request.headers.get(h)
+        if v:
+            return v.split(',')[0].strip()
+    return request.remote_addr
+
+def geo_lookup_async(ip, row_id):
+    """Busca localização geográfica em background e actualiza o registo."""
+    if not REQUESTS_AVAILABLE:
+        return
+    if ip in ('127.0.0.1', '::1', 'localhost'):
+        return
+    try:
+        r = req_lib.get(f'http://ip-api.com/json/{ip}?fields=status,country,regionName,city,lat,lon,isp',
+                        timeout=4)
+        d = r.json()
+        if d.get('status') == 'success':
+            conn = sqlite3.connect(AUDIT_DB)
+            conn.execute('''UPDATE acessos SET pais=?,regiao=?,cidade=?,lat=?,lon=?,isp=? WHERE id=?''',
+                         (d.get('country'), d.get('regionName'), d.get('city'),
+                          d.get('lat'), d.get('lon'), d.get('isp'), row_id))
+            conn.commit(); conn.close()
+    except Exception:
+        pass
+
+def log_access(operacao=None, filename=None, status=200):
+    ip = get_real_ip()
+    ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    conn = sqlite3.connect(AUDIT_DB)
+    cur = conn.execute(
+        '''INSERT INTO acessos (ts,ip,rota,metodo,operacao,filename,status,user_agent)
+           VALUES (?,?,?,?,?,?,?,?)''',
+        (ts, ip, request.path, request.method,
+         operacao, filename, status,
+         request.headers.get('User-Agent', '')[:250])
+    )
+    row_id = cur.lastrowid
+    conn.commit(); conn.close()
+    t = threading.Thread(target=geo_lookup_async, args=(ip, row_id), daemon=True)
+    t.start()
+    return row_id
 
 # ─── Dependências opcionais ───────────────────────────────────────────────────
 try:
@@ -404,6 +481,12 @@ def recortar_margens_pdf(caminho_pdf, margem_mm, pasta_saida):
 
 # ─── Rotas ────────────────────────────────────────────────────────────────────
 
+@app.before_request
+def before():
+    # Regista todas as visitas à página principal e operações
+    if request.path in ('/', ) and request.method == 'GET':
+        log_access()
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -426,6 +509,7 @@ def get_info():
         file.save(filepath)
         info = get_pdf_info(filepath)
         info.update({'session_id': session_id, 'filename': filename, 'filepath': filepath})
+        log_access(operacao='upload', filename=filename)
         return jsonify(info)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -510,11 +594,13 @@ def processar():
             arquivos, total = recortar_margens_pdf(filepath, float(data.get('margem_mm', 10)), pasta)
         else:
             return jsonify({'error': f'Operação "{operacao}" inválida'}), 400
+        log_access(operacao=operacao, filename=os.path.basename(filepath))
         return jsonify({
             'success': True, 'session_id': session_id,
             'total_paginas': total, 'arquivos': arquivos, 'operacao': operacao
         })
     except Exception as e:
+        log_access(operacao=operacao, status=500)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/mesclar', methods=['POST'])
@@ -572,6 +658,73 @@ def limpar_sessao(session_id):
             except: pass
     return jsonify({'success': True})
 
+# ─── Rotas de Auditoria ───────────────────────────────────────────────────────
+
+@app.route('/auditoria')
+def auditoria_login():
+    return render_template('auditoria.html')
+
+@app.route('/auditoria/dados')
+def auditoria_dados():
+    pwd = request.args.get('pwd', '')
+    if pwd != AUDIT_PASSWORD:
+        return jsonify({'error': 'Senha incorreta'}), 403
+    page = int(request.args.get('page', 1))
+    per = 50
+    offset = (page - 1) * per
+    conn = sqlite3.connect(AUDIT_DB)
+    conn.row_factory = sqlite3.Row
+    total = conn.execute('SELECT COUNT(*) FROM acessos').fetchone()[0]
+    rows = conn.execute(
+        'SELECT * FROM acessos ORDER BY id DESC LIMIT ? OFFSET ?', (per, offset)
+    ).fetchall()
+    # Stats
+    stats = {}
+    stats['total'] = total
+    stats['hoje'] = conn.execute(
+        "SELECT COUNT(*) FROM acessos WHERE ts LIKE ?",
+        (datetime.utcnow().strftime('%Y-%m-%d') + '%',)
+    ).fetchone()[0]
+    stats['paises'] = [dict(r) for r in conn.execute(
+        "SELECT pais, COUNT(*) as qtd FROM acessos WHERE pais IS NOT NULL GROUP BY pais ORDER BY qtd DESC LIMIT 10"
+    ).fetchall()]
+    stats['ops'] = [dict(r) for r in conn.execute(
+        "SELECT operacao, COUNT(*) as qtd FROM acessos WHERE operacao IS NOT NULL GROUP BY operacao ORDER BY qtd DESC"
+    ).fetchall()]
+    stats['ips'] = [dict(r) for r in conn.execute(
+        "SELECT ip, COUNT(*) as qtd FROM acessos GROUP BY ip ORDER BY qtd DESC LIMIT 10"
+    ).fetchall()]
+    stats['por_hora'] = [dict(r) for r in conn.execute(
+        "SELECT substr(ts,12,2) as hora, COUNT(*) as qtd FROM acessos GROUP BY hora ORDER BY hora"
+    ).fetchall()]
+    conn.close()
+    return jsonify({
+        'rows': [dict(r) for r in rows],
+        'total': total,
+        'page': page,
+        'pages': (total + per - 1) // per,
+        'stats': stats
+    })
+
+@app.route('/auditoria/export')
+def auditoria_export():
+    pwd = request.args.get('pwd', '')
+    if pwd != AUDIT_PASSWORD:
+        return jsonify({'error': 'Sem autorização'}), 403
+    conn = sqlite3.connect(AUDIT_DB)
+    rows = conn.execute('SELECT * FROM acessos ORDER BY id DESC').fetchall()
+    conn.close()
+    lines = ['id,ts,ip,pais,regiao,cidade,lat,lon,isp,rota,metodo,operacao,filename,status,user_agent']
+    for r in rows:
+        lines.append(','.join(f'"{v}"' if v else '""' for v in r))
+    csv = '\n'.join(lines)
+    return send_file(
+        io.BytesIO(csv.encode('utf-8')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='auditoria_acessos.csv'
+    )
+
 if __name__ == '__main__':
     print(f"\n{'='*65}")
     print("🔪  DIVISOR DE PDF PRO v2.0  —  16 operações!")
@@ -579,5 +732,7 @@ if __name__ == '__main__':
     print("📍  http://localhost:5000")
     print(f"   reportlab : {'✅  disponível' if REPORTLAB_AVAILABLE else '❌  py -m pip install reportlab'}")
     print(f"   pymupdf   : {'✅  disponível' if PYMUPDF_AVAILABLE else '❌  py -m pip install pymupdf'}")
+    print(f"{'='*65}\n")
+    print(f"   auditoria : http://localhost:5000/auditoria  (senha: {AUDIT_PASSWORD})")
     print(f"{'='*65}\n")
     app.run(debug=True, host='0.0.0.0', port=5000)

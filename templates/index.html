@@ -249,6 +249,12 @@
 
         @media(max-width:900px){.main-layout{grid-template-columns:1fr}.operations-grid{grid-template-columns:repeat(4,1fr)}}
         @media(max-width:650px){.header h1{font-size:2rem}.operations-grid{grid-template-columns:repeat(2,1fr)}.form-row{grid-template-columns:1fr}.results-stats{flex-direction:column}.pdf-info-grid{grid-template-columns:repeat(2,1fr)}.file-item{flex-direction:column;gap:12px;text-align:center}}
+
+        /* Language Switcher */
+        .lang-switcher { position:fixed; top:18px; right:18px; z-index:500; display:flex; gap:6px; background:rgba(255,255,255,.07); backdrop-filter:blur(12px); padding:7px 10px; border-radius:50px; border:1px solid rgba(255,255,255,.12); }
+        .lang-btn { background:none; border:none; cursor:pointer; font-size:1.4rem; padding:2px 5px; border-radius:8px; opacity:.45; transition:all .2s; line-height:1; }
+        .lang-btn:hover { opacity:.85; transform:scale(1.15); }
+        .lang-btn.active { opacity:1; background:rgba(99,102,241,.3); transform:scale(1.1); }
     </style>
 </head>
 <body>
@@ -258,11 +264,19 @@
 </div>
 
 <div class="container">
+    <!-- Language Switcher -->
+    <div class="lang-switcher">
+        <button class="lang-btn active" onclick="setLang('pt')" title="Português">🇧🇷</button>
+        <button class="lang-btn" onclick="setLang('en')" title="English">🇺🇸</button>
+        <button class="lang-btn" onclick="setLang('es')" title="Español">🇪🇸</button>
+        <button class="lang-btn" onclick="setLang('fr')" title="Français">🇫🇷</button>
+    </div>
+
     <div class="header">
         <div class="logo"><i class="fas fa-cut"></i></div>
-        <h1>Divisor de PDF PRO</h1>
-        <p>Ferramenta completa para manipulação de arquivos PDF</p>
-        <div class="version-badge">v2.0 — 16 operações</div>
+        <h1 data-i18n="appTitle">Divisor de PDF PRO</h1>
+        <p data-i18n="appSubtitle">Ferramenta completa para manipulação de arquivos PDF</p>
+        <div class="version-badge" data-i18n="appBadge">v2.0 — 16 operações</div>
     </div>
 
     <div class="main-layout">
@@ -271,8 +285,8 @@
                 <!-- Upload -->
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
-                    <h3>Arraste seu PDF aqui</h3>
-                    <p>ou clique para selecionar &bull; Máx. 500MB</p>
+                    <h3 data-i18n="uploadTitle">Arraste seu PDF aqui</h3>
+                    <p data-i18n="uploadSub">ou clique para selecionar &bull; Máx. 500MB</p>
                 </div>
                 <input type="file" id="fileInput" accept=".pdf">
                 <input type="file" id="mergeInput" accept=".pdf" multiple>
@@ -308,67 +322,67 @@
                 </div>
 
                 <!-- Operations Grid -->
-                <h4 class="card-title"><i class="fas fa-tools"></i> Escolha a operação</h4>
+                <h4 class="card-title"><i class="fas fa-tools"></i> <span data-i18n="chooseOp">Escolha a operação</span></h4>
                 <div class="operations-grid">
-                    <div class="ops-section-label">✂️ Divisão</div>
+                    <div class="ops-section-label" data-i18n="secSplit">✂️ Divisão</div>
                     <div class="operation-btn op-split" data-op="dividir_partes">
-                        <i class="fas fa-columns"></i><span class="label">Dividir em Partes</span>
+                        <i class="fas fa-columns"></i><span class="label" data-i18n="op_dividir_partes">Dividir em Partes</span>
                     </div>
                     <div class="operation-btn op-split" data-op="dividir_paginas">
-                        <i class="fas fa-file-alt"></i><span class="label">Páginas por Parte</span>
+                        <i class="fas fa-file-alt"></i><span class="label" data-i18n="op_dividir_paginas">Páginas por Parte</span>
                     </div>
                     <div class="operation-btn op-split" data-op="dividir_marcadores">
-                        <i class="fas fa-bookmark"></i><span class="label">Por Marcadores</span>
+                        <i class="fas fa-bookmark"></i><span class="label" data-i18n="op_dividir_marcadores">Por Marcadores</span>
                     </div>
 
-                    <div class="ops-section-label">🔍 Extração & Conversão</div>
+                    <div class="ops-section-label" data-i18n="secExtract">🔍 Extração &amp; Conversão</div>
                     <div class="operation-btn op-extract" data-op="extrair_paginas">
-                        <i class="fas fa-hand-pointer"></i><span class="label">Extrair Páginas</span>
+                        <i class="fas fa-hand-pointer"></i><span class="label" data-i18n="op_extrair_paginas">Extrair Páginas</span>
                     </div>
                     <div class="operation-btn op-extract" data-op="extrair_intervalo">
-                        <i class="fas fa-arrows-alt-h"></i><span class="label">Extrair Intervalo</span>
+                        <i class="fas fa-arrows-alt-h"></i><span class="label" data-i18n="op_extrair_intervalo">Extrair Intervalo</span>
                     </div>
                     <div class="operation-btn op-image" data-op="converter_imagens">
-                        <i class="fas fa-images"></i><span class="label">Converter Imagens</span>
+                        <i class="fas fa-images"></i><span class="label" data-i18n="op_converter_imagens">Converter Imagens</span>
                         <span class="req-badge">pymupdf</span>
                     </div>
 
-                    <div class="ops-section-label">✏️ Edição de Páginas</div>
+                    <div class="ops-section-label" data-i18n="secEdit">✏️ Edição de Páginas</div>
                     <div class="operation-btn op-edit" data-op="rotacionar">
-                        <i class="fas fa-sync-alt"></i><span class="label">Rotacionar</span>
+                        <i class="fas fa-sync-alt"></i><span class="label" data-i18n="op_rotacionar">Rotacionar</span>
                     </div>
                     <div class="operation-btn op-edit" data-op="remover_paginas">
-                        <i class="fas fa-trash-alt"></i><span class="label">Remover Páginas</span>
+                        <i class="fas fa-trash-alt"></i><span class="label" data-i18n="op_remover_paginas">Remover Páginas</span>
                     </div>
                     <div class="operation-btn op-edit" data-op="reordenar">
-                        <i class="fas fa-sort"></i><span class="label">Reordenar</span>
+                        <i class="fas fa-sort"></i><span class="label" data-i18n="op_reordenar">Reordenar</span>
                     </div>
                     <div class="operation-btn op-edit" data-op="recortar_margens">
-                        <i class="fas fa-crop-alt"></i><span class="label">Recortar Margens</span>
+                        <i class="fas fa-crop-alt"></i><span class="label" data-i18n="op_recortar_margens">Recortar Margens</span>
                     </div>
 
-                    <div class="ops-section-label">➕ Adicionar ao PDF</div>
+                    <div class="ops-section-label" data-i18n="secAdd">➕ Adicionar ao PDF</div>
                     <div class="operation-btn op-add" data-op="marca_dagua">
-                        <i class="fas fa-tint"></i><span class="label">Marca D'água</span>
+                        <i class="fas fa-tint"></i><span class="label" data-i18n="op_marca_dagua">Marca D'água</span>
                         <span class="req-badge">reportlab</span>
                     </div>
                     <div class="operation-btn op-add" data-op="numeracao_paginas">
-                        <i class="fas fa-list-ol"></i><span class="label">Numeração</span>
+                        <i class="fas fa-list-ol"></i><span class="label" data-i18n="op_numeracao_paginas">Numeração</span>
                         <span class="req-badge">reportlab</span>
                     </div>
                     <div class="operation-btn op-add" data-op="editar_metadados">
-                        <i class="fas fa-tags"></i><span class="label">Metadados</span>
+                        <i class="fas fa-tags"></i><span class="label" data-i18n="op_editar_metadados">Metadados</span>
                     </div>
 
-                    <div class="ops-section-label">🔒 Segurança & Otimização</div>
+                    <div class="ops-section-label" data-i18n="secSecurity">🔒 Segurança &amp; Otimização</div>
                     <div class="operation-btn op-security" data-op="proteger">
-                        <i class="fas fa-lock"></i><span class="label">Proteger Senha</span>
+                        <i class="fas fa-lock"></i><span class="label" data-i18n="op_proteger">Proteger Senha</span>
                     </div>
                     <div class="operation-btn op-security" data-op="remover_senha">
-                        <i class="fas fa-lock-open"></i><span class="label">Remover Senha</span>
+                        <i class="fas fa-lock-open"></i><span class="label" data-i18n="op_remover_senha">Remover Senha</span>
                     </div>
                     <div class="operation-btn op-compress" data-op="comprimir">
-                        <i class="fas fa-compress-arrows-alt"></i><span class="label">Comprimir</span>
+                        <i class="fas fa-compress-arrows-alt"></i><span class="label" data-i18n="op_comprimir">Comprimir</span>
                     </div>
                 </div>
 
@@ -584,31 +598,31 @@
 
                 <!-- Execute Button -->
                 <button class="btn btn-primary" id="btnExecutar" disabled>
-                    <i class="fas fa-play"></i> Executar Operação
+                    <i class="fas fa-play"></i> <span data-i18n="btnExecute">Executar Operação</span>
                 </button>
 
                 <!-- Results -->
                 <div class="results" id="results">
                     <div class="results-header">
-                        <h3><i class="fas fa-check-circle"></i> Operação Concluída!</h3>
+                        <h3><i class="fas fa-check-circle"></i> <span data-i18n="resultDone">Operação Concluída!</span></h3>
                         <button class="btn btn-success btn-sm" id="btnDownloadAll">
-                            <i class="fas fa-download"></i> Baixar Todos (ZIP)
+                            <i class="fas fa-download"></i> <span data-i18n="btnDownloadAll">Baixar Todos (ZIP)</span>
                         </button>
                     </div>
                     <div class="results-stats">
                         <div class="results-stat">
                             <div class="results-stat-value" id="resultPages">0</div>
-                            <div class="results-stat-label">Páginas Processadas</div>
+                            <div class="results-stat-label" data-i18n="statPages">Páginas Processadas</div>
                         </div>
                         <div class="results-stat">
                             <div class="results-stat-value" id="resultFiles">0</div>
-                            <div class="results-stat-label">Arquivos Gerados</div>
+                            <div class="results-stat-label" data-i18n="statFiles">Arquivos Gerados</div>
                         </div>
                     </div>
                     <div class="files-list" id="filesList"></div>
                     <div class="results-more" id="resultMore" style="display:none"></div>
                     <button class="btn btn-outline" id="btnNovo" style="margin-top:20px">
-                        <i class="fas fa-redo"></i> Nova Operação
+                        <i class="fas fa-redo"></i> <span data-i18n="btnNewOp">Nova Operação</span>
                     </button>
                 </div>
             </div>
@@ -617,25 +631,25 @@
         <!-- ── SIDEBAR ── -->
         <div class="sidebar">
             <div class="card">
-                <h4 class="card-title"><i class="fas fa-magic"></i> Ações Rápidas</h4>
+                <h4 class="card-title"><i class="fas fa-magic"></i> <span data-i18n="quickActions">Ações Rápidas</span></h4>
                 <div class="tool-list">
                     <div class="tool-item merge" id="btnMesclar">
                         <i class="fas fa-object-group"></i>
-                        <span>Mesclar PDFs</span>
+                        <span data-i18n="mergePdfs">Mesclar PDFs</span>
                     </div>
                     <div class="tool-item preview-all" id="btnPreviewSidebar">
                         <i class="fas fa-th"></i>
-                        <span>Ver Todas as Páginas</span>
+                        <span data-i18n="viewPages">Ver Todas as Páginas</span>
                     </div>
                 </div>
             </div>
 
             <!-- Merge Section -->
             <div class="card merge-section" id="mergeSection">
-                <h4 class="card-title"><i class="fas fa-object-group"></i> Mesclar PDFs</h4>
-                <p style="font-size:.85rem;color:rgba(255,255,255,.6);margin-bottom:15px">Selecione 2 ou mais PDFs para unir em um único arquivo.</p>
+                <h4 class="card-title"><i class="fas fa-object-group"></i> <span data-i18n="mergePdfs">Mesclar PDFs</span></h4>
+                <p data-i18n="mergeDesc" style="font-size:.85rem;color:rgba(255,255,255,.6);margin-bottom:15px">Selecione 2 ou mais PDFs para unir em um único arquivo.</p>
                 <button class="btn btn-outline btn-sm" id="btnAddMerge" style="margin-bottom:15px">
-                    <i class="fas fa-plus"></i> Adicionar PDFs
+                    <i class="fas fa-plus"></i> <span data-i18n="addPdfs">Adicionar PDFs</span>
                 </button>
                 <div class="merge-files-list" id="mergeFilesList">
                     <p style="text-align:center;color:rgba(255,255,255,.4);font-size:.85rem">Nenhum arquivo adicionado</p>
@@ -645,21 +659,21 @@
                     <input type="text" id="mergeOutputName" value="documento_mesclado" placeholder="Nome do arquivo">
                 </div>
                 <button class="btn btn-success" id="btnExecutarMerge" disabled>
-                    <i class="fas fa-object-group"></i> Mesclar
+                    <i class="fas fa-object-group"></i> <span data-i18n="btnMerge">Mesclar</span>
                 </button>
             </div>
 
             <!-- Histórico -->
             <div class="card">
-                <h4 class="card-title"><i class="fas fa-history"></i> Histórico da Sessão</h4>
+                <h4 class="card-title"><i class="fas fa-history"></i> <span data-i18n="historyTitle">Histórico da Sessão</span></h4>
                 <div class="history-list" id="historyList">
-                    <div class="history-empty"><i class="fas fa-clock"></i><br>Nenhuma operação ainda</div>
+                    <div class="history-empty"><i class="fas fa-clock"></i><br><span data-i18n="historyEmpty">Nenhuma operação ainda</span></div>
                 </div>
             </div>
 
             <!-- Dependências -->
             <div class="card">
-                <h4 class="card-title"><i class="fas fa-puzzle-piece"></i> Dependências</h4>
+                <h4 class="card-title"><i class="fas fa-puzzle-piece"></i> <span data-i18n="depsTitle">Dependências</span></h4>
                 <div id="depRows">
                     <div class="dep-row">
                         <div class="dep-row-left"><i class="fas fa-circle" style="color:rgba(255,255,255,.2)"></i><span>reportlab</span></div>
@@ -676,20 +690,20 @@
 
             <!-- Dicas -->
             <div class="card">
-                <h4 class="card-title"><i class="fas fa-lightbulb"></i> Dicas</h4>
+                <h4 class="card-title"><i class="fas fa-lightbulb"></i> <span data-i18n="tipsTitle">Dicas</span></h4>
                 <ul style="font-size:.85rem;color:rgba(255,255,255,.6);line-height:1.9;padding-left:18px">
-                    <li>Arraste e solte para upload rápido</li>
-                    <li>Use <strong>Páginas</strong> para ver miniaturas</li>
-                    <li>Clique nas miniaturas para selecionar</li>
-                    <li>Operações com ⚠️ precisam de libs extras</li>
-                    <li>Compressão funciona melhor com imagens</li>
+                    <li data-i18n="tip1">Arraste e solte para upload rápido</li>
+                    <li data-i18n="tip2">Use <strong>Páginas</strong> para ver miniaturas</li>
+                    <li data-i18n="tip3">Clique nas miniaturas para selecionar</li>
+                    <li data-i18n="tip4">Operações com ⚠️ precisam de libs extras</li>
+                    <li data-i18n="tip5">Compressão funciona melhor com imagens</li>
                 </ul>
             </div>
         </div>
     </div>
 
     <div class="footer">
-        <p>Feito com <i class="fas fa-heart" style="color:#ec4899"></i> usando Python + Flask &bull; v2.0</p>
+        <p><span data-i18n="footer">Feito com</span> <i class="fas fa-heart" style="color:#ec4899"></i> Python + Flask &bull; v2.0</p>
     </div>
 </div>
 
@@ -713,14 +727,14 @@
     <div class="preview-modal-box">
         <div class="preview-modal-head">
             <div>
-                <h3><i class="fas fa-th-large"></i> Pré-visualização de Páginas</h3>
-                <div class="preview-subtitle" id="previewSubtitle">Clique nas páginas para selecionar</div>
+                <h3><i class="fas fa-th-large"></i> <span data-i18n="previewTitle">Pré-visualização de Páginas</span></h3>
+                <div class="preview-subtitle" id="previewSubtitle" data-i18n="previewSub">Clique nas páginas para selecionar</div>
             </div>
             <div class="preview-head-btns">
                 <span class="preview-mode-badge" id="previewModeBadge"></span>
                 <span class="preview-sel-info" id="previewSelInfo"></span>
                 <button class="btn btn-success btn-xs" id="btnPreviewConfirm" style="display:none">
-                    <i class="fas fa-check"></i> Confirmar
+                    <i class="fas fa-check"></i> <span data-i18n="btnConfirm">Confirmar</span>
                 </button>
                 <button class="btn btn-outline btn-xs" onclick="closePreview()">
                     <i class="fas fa-times"></i>
@@ -744,6 +758,166 @@
 </div>
 
 <script>
+// ─── Traduções i18n ─────────────────────────────────────────────────────────
+const TRANSLATIONS = {
+  pt: {
+    appTitle:'Divisor de PDF PRO', appSubtitle:'Ferramenta completa para manipulação de arquivos PDF',
+    appBadge:'v2.0 — 16 operações', uploadTitle:'Arraste seu PDF aqui',
+    uploadSub:'ou clique para selecionar • Máx. 500MB', chooseOp:'Escolha a operação',
+    secSplit:'✂️ Divisão', secExtract:'🔍 Extração & Conversão',
+    secEdit:'✏️ Edição de Páginas', secAdd:'➕ Adicionar ao PDF',
+    secSecurity:'🔒 Segurança & Otimização',
+    op_dividir_partes:'Dividir em Partes', op_dividir_paginas:'Páginas por Parte',
+    op_dividir_marcadores:'Por Marcadores', op_extrair_paginas:'Extrair Páginas',
+    op_extrair_intervalo:'Extrair Intervalo', op_converter_imagens:'Converter Imagens',
+    op_rotacionar:'Rotacionar', op_remover_paginas:'Remover Páginas',
+    op_reordenar:'Reordenar', op_recortar_margens:'Recortar Margens',
+    op_marca_dagua:"Marca D'água", op_numeracao_paginas:'Numeração',
+    op_editar_metadados:'Metadados', op_proteger:'Proteger Senha',
+    op_remover_senha:'Remover Senha', op_comprimir:'Comprimir',
+    btnExecute:'Executar Operação', resultDone:'Operação Concluída!',
+    btnDownloadAll:'Baixar Todos (ZIP)', statPages:'Páginas Processadas',
+    statFiles:'Arquivos Gerados', btnNewOp:'Nova Operação',
+    quickActions:'Ações Rápidas', mergePdfs:'Mesclar PDFs',
+    viewPages:'Ver Todas as Páginas', mergeDesc:'Selecione 2 ou mais PDFs para unir em um único arquivo.',
+    addPdfs:'Adicionar PDFs', btnMerge:'Mesclar',
+    historyTitle:'Histórico da Sessão', historyEmpty:'Nenhuma operação ainda',
+    depsTitle:'Dependências', tipsTitle:'Dicas',
+    tip1:'Arraste e solte para upload rápido',
+    tip2:'Use <strong>Páginas</strong> para ver miniaturas',
+    tip3:'Clique nas miniaturas para selecionar',
+    tip4:'Operações com ⚠️ precisam de libs extras',
+    tip5:'Compressão funciona melhor com imagens',
+    footer:'Feito com', previewTitle:'Pré-visualização de Páginas',
+    previewSub:'Clique nas páginas para selecionar', btnConfirm:'Confirmar',
+    toastSuccess:'Operação concluída com sucesso!', toastLoadErr:'Erro ao processar arquivo',
+    toastSelectPages:'página(s) selecionada(s)', toastOrderSet:'Ordem definida! Clique em Executar.',
+    toastNoPdf:'Carregue um PDF primeiro', toastMerged:'PDFs mesclados com sucesso!',
+    depInstalled:'Instalado', depMissing:'Faltando',
+  },
+  en: {
+    appTitle:'PDF Splitter PRO', appSubtitle:'Complete tool for PDF file manipulation',
+    appBadge:'v2.0 — 16 operations', uploadTitle:'Drag your PDF here',
+    uploadSub:'or click to select • Max. 500MB', chooseOp:'Choose operation',
+    secSplit:'✂️ Split', secExtract:'🔍 Extract & Convert',
+    secEdit:'✏️ Page Editing', secAdd:'➕ Add to PDF',
+    secSecurity:'🔒 Security & Optimization',
+    op_dividir_partes:'Split in Parts', op_dividir_paginas:'Pages per Part',
+    op_dividir_marcadores:'By Bookmarks', op_extrair_paginas:'Extract Pages',
+    op_extrair_intervalo:'Extract Range', op_converter_imagens:'Convert to Images',
+    op_rotacionar:'Rotate', op_remover_paginas:'Remove Pages',
+    op_reordenar:'Reorder', op_recortar_margens:'Crop Margins',
+    op_marca_dagua:'Watermark', op_numeracao_paginas:'Page Numbers',
+    op_editar_metadados:'Metadata', op_proteger:'Password Protect',
+    op_remover_senha:'Remove Password', op_comprimir:'Compress',
+    btnExecute:'Execute Operation', resultDone:'Operation Complete!',
+    btnDownloadAll:'Download All (ZIP)', statPages:'Pages Processed',
+    statFiles:'Files Generated', btnNewOp:'New Operation',
+    quickActions:'Quick Actions', mergePdfs:'Merge PDFs',
+    viewPages:'View All Pages', mergeDesc:'Select 2 or more PDFs to merge into one file.',
+    addPdfs:'Add PDFs', btnMerge:'Merge',
+    historyTitle:'Session History', historyEmpty:'No operations yet',
+    depsTitle:'Dependencies', tipsTitle:'Tips',
+    tip1:'Drag & drop for quick upload',
+    tip2:'Use <strong>Pages</strong> to view thumbnails',
+    tip3:'Click thumbnails to select them',
+    tip4:'Operations with ⚠️ require extra libs',
+    tip5:'Compression works best with images',
+    footer:'Made with', previewTitle:'Page Preview',
+    previewSub:'Click pages to select/deselect', btnConfirm:'Confirm',
+    toastSuccess:'Operation completed successfully!', toastLoadErr:'Error processing file',
+    toastSelectPages:'page(s) selected', toastOrderSet:'Order set! Click Execute.',
+    toastNoPdf:'Please load a PDF first', toastMerged:'PDFs merged successfully!',
+    depInstalled:'Installed', depMissing:'Missing',
+  },
+  es: {
+    appTitle:'Divisor de PDF PRO', appSubtitle:'Herramienta completa para manipulación de archivos PDF',
+    appBadge:'v2.0 — 16 operaciones', uploadTitle:'Arrastra tu PDF aquí',
+    uploadSub:'o haz clic para seleccionar • Máx. 500MB', chooseOp:'Elige la operación',
+    secSplit:'✂️ División', secExtract:'🔍 Extracción & Conversión',
+    secEdit:'✏️ Edición de Páginas', secAdd:'➕ Añadir al PDF',
+    secSecurity:'🔒 Seguridad & Optimización',
+    op_dividir_partes:'Dividir en Partes', op_dividir_paginas:'Páginas por Parte',
+    op_dividir_marcadores:'Por Marcadores', op_extrair_paginas:'Extraer Páginas',
+    op_extrair_intervalo:'Extraer Rango', op_converter_imagens:'Convertir Imágenes',
+    op_rotacionar:'Rotar', op_remover_paginas:'Eliminar Páginas',
+    op_reordenar:'Reordenar', op_recortar_margens:'Recortar Márgenes',
+    op_marca_dagua:'Marca de Agua', op_numeracao_paginas:'Numeración',
+    op_editar_metadados:'Metadatos', op_proteger:'Proteger con Contraseña',
+    op_remover_senha:'Quitar Contraseña', op_comprimir:'Comprimir',
+    btnExecute:'Ejecutar Operación', resultDone:'¡Operación Completada!',
+    btnDownloadAll:'Descargar Todo (ZIP)', statPages:'Páginas Procesadas',
+    statFiles:'Archivos Generados', btnNewOp:'Nueva Operación',
+    quickActions:'Acciones Rápidas', mergePdfs:'Unir PDFs',
+    viewPages:'Ver Todas las Páginas', mergeDesc:'Selecciona 2 o más PDFs para unirlos en un único archivo.',
+    addPdfs:'Añadir PDFs', btnMerge:'Unir',
+    historyTitle:'Historial de Sesión', historyEmpty:'Ninguna operación todavía',
+    depsTitle:'Dependencias', tipsTitle:'Consejos',
+    tip1:'Arrastra y suelta para subir rápidamente',
+    tip2:'Usa <strong>Páginas</strong> para ver miniaturas',
+    tip3:'Haz clic en las miniaturas para seleccionar',
+    tip4:'Operaciones con ⚠️ requieren librerías extra',
+    tip5:'La compresión funciona mejor con imágenes',
+    footer:'Hecho con', previewTitle:'Vista Previa de Páginas',
+    previewSub:'Haz clic en las páginas para seleccionar', btnConfirm:'Confirmar',
+    toastSuccess:'¡Operación completada con éxito!', toastLoadErr:'Error al procesar el archivo',
+    toastSelectPages:'página(s) seleccionada(s)', toastOrderSet:'¡Orden definido! Haz clic en Ejecutar.',
+    toastNoPdf:'Por favor, carga un PDF primero', toastMerged:'¡PDFs unidos con éxito!',
+    depInstalled:'Instalado', depMissing:'Faltante',
+  },
+  fr: {
+    appTitle:'Diviseur de PDF PRO', appSubtitle:'Outil complet pour la manipulation de fichiers PDF',
+    appBadge:'v2.0 — 16 opérations', uploadTitle:'Glissez votre PDF ici',
+    uploadSub:'ou cliquez pour sélectionner • Max. 500Mo', chooseOp:'Choisissez une opération',
+    secSplit:'✂️ Division', secExtract:'🔍 Extraction & Conversion',
+    secEdit:'✏️ Édition de Pages', secAdd:'➕ Ajouter au PDF',
+    secSecurity:'🔒 Sécurité & Optimisation',
+    op_dividir_partes:'Diviser en Parties', op_dividir_paginas:'Pages par Partie',
+    op_dividir_marcadores:'Par Signets', op_extrair_paginas:'Extraire Pages',
+    op_extrair_intervalo:'Extraire Plage', op_converter_imagens:'Convertir en Images',
+    op_rotacionar:'Pivoter', op_remover_paginas:'Supprimer Pages',
+    op_reordenar:'Réorganiser', op_recortar_margens:'Rogner Marges',
+    op_marca_dagua:'Filigrane', op_numeracao_paginas:'Numérotation',
+    op_editar_metadados:'Métadonnées', op_proteger:'Protéger par Mot de Passe',
+    op_remover_senha:'Supprimer Mot de Passe', op_comprimir:'Compresser',
+    btnExecute:"Exécuter l'Opération", resultDone:'Opération Terminée !',
+    btnDownloadAll:'Tout Télécharger (ZIP)', statPages:'Pages Traitées',
+    statFiles:'Fichiers Générés', btnNewOp:'Nouvelle Opération',
+    quickActions:'Actions Rapides', mergePdfs:'Fusionner PDFs',
+    viewPages:'Voir Toutes les Pages', mergeDesc:'Sélectionnez 2 PDFs ou plus à fusionner en un seul fichier.',
+    addPdfs:'Ajouter PDFs', btnMerge:'Fusionner',
+    historyTitle:'Historique de Session', historyEmpty:'Aucune opération encore',
+    depsTitle:'Dépendances', tipsTitle:'Conseils',
+    tip1:'Glisser-déposer pour upload rapide',
+    tip2:'Utilisez <strong>Pages</strong> pour voir les miniatures',
+    tip3:'Cliquez sur les miniatures pour sélectionner',
+    tip4:'Les opérations ⚠️ nécessitent des libs supplémentaires',
+    tip5:'La compression fonctionne mieux avec les images',
+    footer:'Fait avec', previewTitle:'Aperçu des Pages',
+    previewSub:'Cliquez sur les pages pour sélectionner', btnConfirm:'Confirmer',
+    toastSuccess:'Opération terminée avec succès !', toastLoadErr:'Erreur lors du traitement',
+    toastSelectPages:'page(s) sélectionnée(s)', toastOrderSet:"Ordre défini ! Cliquez sur Exécuter.",
+    toastNoPdf:'Veuillez charger un PDF', toastMerged:'PDFs fusionnés avec succès !',
+    depInstalled:'Installé', depMissing:'Manquant',
+  }
+};
+
+let currentLang = localStorage.getItem('pdfLang') || 'pt';
+
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('pdfLang', lang);
+  document.querySelectorAll('.lang-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick').includes(`'${lang}'`));
+  });
+  const T = TRANSLATIONS[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (T[key] !== undefined) el.innerHTML = T[key];
+  });
+  document.documentElement.lang = lang === 'pt' ? 'pt-BR' : lang;
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let currentFile = null, currentPdfInfo = null, currentOperation = null;
 let currentSessionId = null, mergeFiles = [];
@@ -754,6 +928,7 @@ const sessionHistory = [];
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 checkDependencies();
+setLang(currentLang);
 
 async function checkDependencies() {
     try {
@@ -880,7 +1055,7 @@ document.getElementById('btnExecutar').addEventListener('click', async () => {
         const r = await fetch('/processar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const d = await r.json();
         if (d.error) { showToast(d.error, 'error'); }
-        else { currentSessionId = d.session_id; showResults(d); addHistory(currentOperation, currentPdfInfo.filename); showToast('Operação concluída com sucesso!', 'success'); }
+        else { currentSessionId = d.session_id; showResults(d); addHistory(currentOperation, currentPdfInfo.filename); showToast(TRANSLATIONS[currentLang].toastSuccess, 'success'); }
     } catch(e) { showToast('Erro ao processar', 'error'); }
     hideProgress();
 });
@@ -988,7 +1163,7 @@ document.getElementById('btnExecutarMerge').addEventListener('click', async () =
             addHistory('mesclar', mergeFiles.map(f=>f.name).join(', '));
             mergeFiles = []; renderMergeList();
             document.getElementById('mergeSection').classList.remove('show');
-            showToast('PDFs mesclados com sucesso!', 'success');
+            showToast(TRANSLATIONS[currentLang].toastMerged, 'success');
         }
     } catch(e) { showToast('Erro ao mesclar', 'error'); }
     hideProgress();
@@ -999,7 +1174,7 @@ document.getElementById('btnPreviewAll').addEventListener('click', () => openPre
 document.getElementById('btnPreviewSidebar').addEventListener('click', () => openPreview('view', null));
 
 function openPreview(mode, targetOp) {
-    if (!currentPdfInfo) { showToast('Carregue um PDF primeiro', 'info'); return; }
+    if (!currentPdfInfo) { showToast(TRANSLATIONS[currentLang].toastNoPdf, 'info'); return; }
     previewMode = mode; previewTargetOp = targetOp;
     previewSelectedPages = [];
     const backdrop = document.getElementById('previewBackdrop');
@@ -1112,10 +1287,10 @@ document.getElementById('btnPreviewConfirm').addEventListener('click', () => {
         const str = sorted.join(', ');
         const fieldMap = { extrair_paginas:'paginasExtrair', rotacionar:'paginasRotacionar', remover_paginas:'paginasRemover' };
         if (fieldMap[previewTargetOp]) document.getElementById(fieldMap[previewTargetOp]).value = str;
-        showToast(`${sorted.length} página(s) selecionada(s)`, 'success');
+        showToast(`${sorted.length} ${TRANSLATIONS[currentLang].toastSelectPages}`, 'success');
     } else if (previewMode === 'reorder') {
         document.getElementById('novaOrdem').value = reorderPageOrder.join(', ');
-        showToast('Ordem definida! Clique em Executar.', 'success');
+        showToast(TRANSLATIONS[currentLang].toastOrderSet, 'success');
     }
     closePreview();
 });
@@ -1159,7 +1334,7 @@ function addHistory(op, filename) {
 
 function renderHistory() {
     const list = document.getElementById('historyList');
-    if (!sessionHistory.length) { list.innerHTML = '<div class="history-empty"><i class="fas fa-clock"></i><br>Nenhuma operação ainda</div>'; return; }
+    if (!sessionHistory.length) { list.innerHTML = `<div class="history-empty"><i class="fas fa-clock"></i><br>${TRANSLATIONS[currentLang].historyEmpty}</div>`; return; }
     list.innerHTML = sessionHistory.slice(0, 8).map(h => `
         <div class="history-item">
             <div class="history-item-icon" style="background:${opColors[h.op] || '#6366f1'}22;color:${opColors[h.op] || '#6366f1'}">

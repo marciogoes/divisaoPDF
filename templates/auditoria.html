@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Auditoria de Acessos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary:#6366f1; --success:#10b981; --warning:#f59e0b;
+            --danger:#ef4444; --info:#06b6d4;
+            --gradient:linear-gradient(135deg,#6366f1,#ec4899);
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;color:white}
+        .container{max-width:1400px;margin:0 auto;padding:30px 20px}
+
+        /* Login */
+        .login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh}
+        .login-card{background:rgba(255,255,255,.07);backdrop-filter:blur(20px);border-radius:24px;padding:50px 40px;border:1px solid rgba(255,255,255,.12);width:100%;max-width:420px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+        .login-icon{width:80px;height:80px;background:var(--gradient);border-radius:22px;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;animation:pulse 2s ease-in-out infinite}
+        .login-icon i{font-size:36px}
+        @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+        .login-card h1{font-size:1.8rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+        .login-card p{color:rgba(255,255,255,.5);margin-bottom:30px;font-size:.95rem}
+        .login-card input{width:100%;padding:16px 20px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.1);border-radius:14px;color:white;font-size:1rem;font-family:'Inter',sans-serif;margin-bottom:16px;transition:all .3s}
+        .login-card input:focus{outline:none;border-color:var(--primary);background:rgba(99,102,241,.1)}
+        .login-card input::placeholder{color:rgba(255,255,255,.35)}
+        .btn-login{width:100%;padding:16px;background:var(--gradient);border:none;border-radius:14px;color:white;font-size:1rem;font-weight:700;cursor:pointer;transition:all .3s}
+        .btn-login:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(99,102,241,.5)}
+        .login-error{color:#f87171;font-size:.85rem;margin-top:10px;display:none}
+        .login-error.show{display:block}
+
+        /* Dashboard */
+        .dashboard{display:none}
+        .dashboard.show{display:block}
+        .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px;flex-wrap:wrap;gap:15px}
+        .top-bar h1{font-size:1.8rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:12px}
+        .top-bar-btns{display:flex;gap:10px}
+        .btn{padding:10px 20px;border:none;border-radius:12px;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .3s;display:inline-flex;align-items:center;gap:8px}
+        .btn-outline{background:transparent;border:2px solid rgba(255,255,255,.2);color:white}
+        .btn-outline:hover{background:rgba(255,255,255,.1)}
+        .btn-success{background:linear-gradient(135deg,#10b981,#059669);color:white}
+        .btn-danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:white}
+
+        /* Stats cards */
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
+        .stat-card{background:rgba(255,255,255,.06);backdrop-filter:blur(15px);border-radius:18px;padding:22px 24px;border:1px solid rgba(255,255,255,.1)}
+        .stat-card-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px}
+        .stat-card-value{font-size:2.2rem;font-weight:800;line-height:1}
+        .stat-card-label{font-size:.8rem;color:rgba(255,255,255,.5);margin-top:6px}
+
+        /* Charts row */
+        .charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:28px}
+        .chart-card{background:rgba(255,255,255,.06);backdrop-filter:blur(15px);border-radius:18px;padding:22px;border:1px solid rgba(255,255,255,.1)}
+        .chart-card h3{font-size:.95rem;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.85)}
+        .chart-card h3 i{color:var(--primary)}
+        .bar-item{margin-bottom:10px}
+        .bar-label{display:flex;justify-content:space-between;font-size:.78rem;color:rgba(255,255,255,.7);margin-bottom:4px}
+        .bar-track{background:rgba(255,255,255,.08);border-radius:6px;height:8px;overflow:hidden}
+        .bar-fill{height:100%;border-radius:6px;transition:width .8s ease}
+
+        /* Table */
+        .table-card{background:rgba(255,255,255,.06);backdrop-filter:blur(15px);border-radius:18px;padding:24px;border:1px solid rgba(255,255,255,.1)}
+        .table-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+        .table-head h3{font-size:1rem;font-weight:700;display:flex;align-items:center;gap:8px}
+        .table-head h3 i{color:var(--info)}
+        .search-box{padding:9px 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:white;font-family:'Inter',sans-serif;font-size:.85rem;width:230px}
+        .search-box::placeholder{color:rgba(255,255,255,.35)}
+        .search-box:focus{outline:none;border-color:var(--primary)}
+        .tbl-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:.82rem}
+        th{text-align:left;padding:10px 14px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.4);border-bottom:1px solid rgba(255,255,255,.07)}
+        td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.05);color:rgba(255,255,255,.8);vertical-align:middle}
+        tr:hover td{background:rgba(255,255,255,.04)}
+        .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.7rem;font-weight:700}
+        .badge-green{background:rgba(16,185,129,.2);color:#34d399}
+        .badge-blue{background:rgba(99,102,241,.2);color:#818cf8}
+        .badge-yellow{background:rgba(245,158,11,.2);color:#fbbf24}
+        .badge-red{background:rgba(239,68,68,.2);color:#f87171}
+        .badge-gray{background:rgba(255,255,255,.1);color:rgba(255,255,255,.6)}
+        .flag{margin-right:5px}
+        .ip-cell{font-family:monospace;font-size:.8rem;color:#a5b4fc}
+
+        /* Pagination */
+        .pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px}
+        .page-btn{width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:transparent;color:white;cursor:pointer;font-size:.85rem;transition:all .2s;display:flex;align-items:center;justify-content:center}
+        .page-btn:hover,.page-btn.active{background:var(--primary);border-color:var(--primary)}
+        .page-btn:disabled{opacity:.3;cursor:not-allowed}
+        .page-info{font-size:.82rem;color:rgba(255,255,255,.45)}
+
+        /* Loading spinner */
+        .spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.1);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:40px auto}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .loading-center{text-align:center;padding:40px}
+
+        /* Hora chart */
+        .hora-chart{display:flex;align-items:flex-end;gap:3px;height:60px;margin-top:6px}
+        .hora-bar{flex:1;background:rgba(99,102,241,.4);border-radius:3px 3px 0 0;min-height:2px;transition:height .5s;position:relative}
+        .hora-bar:hover{background:rgba(99,102,241,.8)}
+        .hora-bar:hover::after{content:attr(data-tip);position:absolute;bottom:105%;left:50%;transform:translateX(-50%);background:#1e1b4b;border:1px solid rgba(255,255,255,.15);padding:4px 8px;border-radius:6px;font-size:.7rem;white-space:nowrap;pointer-events:none}
+        .hora-labels{display:flex;justify-content:space-between;font-size:.6rem;color:rgba(255,255,255,.3);margin-top:4px}
+
+        @media(max-width:900px){.charts-row{grid-template-columns:1fr}}
+        @media(max-width:600px){.stats-grid{grid-template-columns:1fr 1fr}}
+    </style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-wrap" id="loginWrap">
+    <div class="login-card">
+        <div class="login-icon"><i class="fas fa-shield-alt"></i></div>
+        <h1>Auditoria</h1>
+        <p>Painel de controlo de acessos e operações</p>
+        <input type="password" id="pwdInput" placeholder="Senha de acesso" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="btn-login" onclick="doLogin()"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+        <div class="login-error" id="loginError">Senha incorreta. Tente novamente.</div>
+    </div>
+</div>
+
+<!-- Dashboard -->
+<div class="container dashboard" id="dashboard">
+    <div class="top-bar">
+        <h1><i class="fas fa-shield-alt" style="font-size:1.5rem;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent"></i> Auditoria de Acessos</h1>
+        <div class="top-bar-btns">
+            <button class="btn btn-success" onclick="exportCSV()"><i class="fas fa-download"></i> Exportar CSV</button>
+            <button class="btn btn-outline" onclick="loadData(currentPage)"><i class="fas fa-sync-alt"></i> Atualizar</button>
+            <button class="btn btn-danger" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="loading-center"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-row" id="chartsRow" style="display:none">
+        <!-- Países -->
+        <div class="chart-card">
+            <h3><i class="fas fa-globe-americas"></i> Top Países</h3>
+            <div id="chartPaises"></div>
+        </div>
+        <!-- Operações -->
+        <div class="chart-card">
+            <h3><i class="fas fa-tools"></i> Operações</h3>
+            <div id="chartOps"></div>
+        </div>
+        <!-- Por hora -->
+        <div class="chart-card">
+            <h3><i class="fas fa-clock"></i> Acessos por Hora (UTC)</h3>
+            <div id="chartHora"></div>
+            <div class="hora-labels"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>23h</span></div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+        <div class="table-head">
+            <h3><i class="fas fa-list"></i> Registos de Acesso</h3>
+            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Filtrar por IP, país, operação..." oninput="filterTable()">
+        </div>
+        <div class="tbl-wrap">
+            <table id="accessTable">
+                <thead>
+                    <tr>
+                        <th>#</th><th>Data / Hora (UTC)</th><th>IP</th>
+                        <th>Localização</th><th>ISP</th>
+                        <th>Operação</th><th>Ficheiro</th><th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="8" style="text-align:center;padding:40px"><div class="spinner"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+</div>
+
+<script>
+let pwd = '', currentPage = 1, allRows = [];
+
+const opColors = {
+    upload:'badge-blue', dividir_partes:'badge-blue', dividir_paginas:'badge-blue',
+    dividir_marcadores:'badge-blue', extrair_paginas:'badge-yellow', extrair_intervalo:'badge-yellow',
+    converter_imagens:'badge-yellow', rotacionar:'badge-yellow', remover_paginas:'badge-red',
+    reordenar:'badge-yellow', recortar_margens:'badge-yellow', marca_dagua:'badge-green',
+    numeracao_paginas:'badge-green', editar_metadados:'badge-green', proteger:'badge-green',
+    remover_senha:'badge-red', comprimir:'badge-green', mesclar:'badge-blue'
+};
+
+const opLabels = {
+    upload:'Upload', dividir_partes:'Dividir Partes', dividir_paginas:'Pág. por Parte',
+    dividir_marcadores:'Por Marcadores', extrair_paginas:'Extrair Págs.', extrair_intervalo:'Extrair Intervalo',
+    converter_imagens:'→ Imagens', rotacionar:'Rotacionar', remover_paginas:'Remover Págs.',
+    reordenar:'Reordenar', recortar_margens:'Recortar', marca_dagua:"Marca D'água",
+    numeracao_paginas:'Numeração', editar_metadados:'Metadados', proteger:'Proteger',
+    remover_senha:'Remover Senha', comprimir:'Comprimir', mesclar:'Mesclar'
+};
+
+function doLogin() {
+    const p = document.getElementById('pwdInput').value;
+    if (!p) return;
+    fetch(`/auditoria/dados?pwd=${encodeURIComponent(p)}&page=1`)
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(d => {
+            pwd = p;
+            document.getElementById('loginWrap').style.display = 'none';
+            document.getElementById('dashboard').classList.add('show');
+            renderStats(d.stats);
+            renderCharts(d.stats);
+            renderTable(d.rows);
+            renderPagination(d.page, d.pages, d.total);
+            allRows = d.rows;
+        })
+        .catch(() => { document.getElementById('loginError').classList.add('show'); });
+}
+
+function loadData(page) {
+    currentPage = page;
+    fetch(`/auditoria/dados?pwd=${encodeURIComponent(pwd)}&page=${page}`)
+        .then(r => r.json())
+        .then(d => {
+            renderStats(d.stats);
+            renderCharts(d.stats);
+            renderTable(d.rows);
+            renderPagination(d.page, d.pages, d.total);
+            allRows = d.rows;
+        });
+}
+
+function renderStats(s) {
+    const cards = [
+        { icon:'fas fa-users', color:'rgba(99,102,241,.2)', iconColor:'#818cf8',
+          value: s.total, label:'Total de Acessos' },
+        { icon:'fas fa-calendar-day', color:'rgba(16,185,129,.2)', iconColor:'#34d399',
+          value: s.hoje, label:'Acessos Hoje (UTC)' },
+        { icon:'fas fa-globe', color:'rgba(245,158,11,.2)', iconColor:'#fbbf24',
+          value: s.paises.length, label:'Países Distintos' },
+        { icon:'fas fa-tools', color:'rgba(236,72,153,.2)', iconColor:'#f472b6',
+          value: s.ops.reduce((a,o)=>a+o.qtd,0), label:'Operações Executadas' },
+    ];
+    document.getElementById('statsGrid').innerHTML = cards.map(c => `
+        <div class="stat-card">
+            <div class="stat-card-icon" style="background:${c.color}">
+                <i class="${c.icon}" style="color:${c.iconColor}"></i>
+            </div>
+            <div class="stat-card-value" style="color:${c.iconColor}">${c.value}</div>
+            <div class="stat-card-label">${c.label}</div>
+        </div>`).join('');
+}
+
+function renderCharts(s) {
+    document.getElementById('chartsRow').style.display = 'grid';
+    // Países
+    const maxP = s.paises[0]?.qtd || 1;
+    document.getElementById('chartPaises').innerHTML = s.paises.length ?
+        s.paises.map(p => `
+            <div class="bar-item">
+                <div class="bar-label"><span>${p.pais || 'Desconhecido'}</span><span>${p.qtd}</span></div>
+                <div class="bar-track"><div class="bar-fill" style="width:${p.qtd/maxP*100}%;background:linear-gradient(90deg,#6366f1,#ec4899)"></div></div>
+            </div>`).join('') :
+        '<p style="color:rgba(255,255,255,.4);font-size:.85rem">Aguardando dados geo...</p>';
+    // Operações
+    const maxO = s.ops[0]?.qtd || 1;
+    document.getElementById('chartOps').innerHTML = s.ops.length ?
+        s.ops.map(o => `
+            <div class="bar-item">
+                <div class="bar-label"><span>${opLabels[o.operacao]||o.operacao||'Visita'}</span><span>${o.qtd}</span></div>
+                <div class="bar-track"><div class="bar-fill" style="width:${o.qtd/maxO*100}%;background:linear-gradient(90deg,#10b981,#06b6d4)"></div></div>
+            </div>`).join('') :
+        '<p style="color:rgba(255,255,255,.4);font-size:.85rem">Nenhuma operação ainda</p>';
+    // Por hora
+    const hMap = {};
+    s.por_hora.forEach(h => hMap[h.hora] = h.qtd);
+    const maxH = Math.max(...Object.values(hMap), 1);
+    const bars = Array.from({length:24}, (_,i) => {
+        const h = String(i).padStart(2,'0');
+        const q = hMap[h] || 0;
+        const pct = Math.max(4, q / maxH * 100);
+        return `<div class="hora-bar" style="height:${pct}%" data-tip="${h}h: ${q}"></div>`;
+    }).join('');
+    document.getElementById('chartHora').innerHTML = `<div class="hora-chart">${bars}</div>`;
+}
+
+function renderTable(rows) {
+    const tbody = document.getElementById('tableBody');
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:rgba(255,255,255,.4)">Nenhum registo encontrado</td></tr>'; return; }
+    tbody.innerHTML = rows.map(r => {
+        const loc = [r.cidade, r.regiao, r.pais].filter(Boolean).join(', ') || '<span style="color:rgba(255,255,255,.3)">—</span>';
+        const opBadge = r.operacao ?
+            `<span class="badge ${opColors[r.operacao]||'badge-gray'}">${opLabels[r.operacao]||r.operacao}</span>` :
+            `<span class="badge badge-gray">Visita</span>`;
+        const statusBadge = r.status >= 500 ? `<span class="badge badge-red">${r.status}</span>` :
+                            r.status >= 400 ? `<span class="badge badge-yellow">${r.status}</span>` :
+                                             `<span class="badge badge-green">${r.status||200}</span>`;
+        const fname = r.filename ? `<span style="font-size:.75rem;color:rgba(255,255,255,.55)" title="${r.filename}">${r.filename.length>25?r.filename.slice(0,25)+'…':r.filename}</span>` : '<span style="color:rgba(255,255,255,.2)">—</span>';
+        return `<tr data-search="${(r.ip||'')+' '+(r.pais||'')+' '+(r.cidade||'')+' '+(r.operacao||'')+' '+(r.filename||'')+' '+(r.isp||'')}">
+            <td style="color:rgba(255,255,255,.3);font-size:.75rem">${r.id}</td>
+            <td style="white-space:nowrap">${r.ts}</td>
+            <td class="ip-cell">${r.ip||'—'}</td>
+            <td>${loc}</td>
+            <td style="font-size:.75rem;color:rgba(255,255,255,.55);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.isp||''}">${r.isp||'—'}</td>
+            <td>${opBadge}</td>
+            <td>${fname}</td>
+            <td>${statusBadge}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderPagination(page, pages, total) {
+    const p = document.getElementById('pagination');
+    if (pages <= 1) { p.innerHTML = `<span class="page-info">${total} registo(s)</span>`; return; }
+    let html = `<button class="page-btn" onclick="loadData(${page-1})" ${page<=1?'disabled':''}><i class="fas fa-chevron-left"></i></button>`;
+    const start = Math.max(1, page-2), end = Math.min(pages, page+2);
+    if (start > 1) html += `<button class="page-btn" onclick="loadData(1)">1</button><span class="page-info">…</span>`;
+    for (let i=start;i<=end;i++) html += `<button class="page-btn${i===page?' active':''}" onclick="loadData(${i})">${i}</button>`;
+    if (end < pages) html += `<span class="page-info">…</span><button class="page-btn" onclick="loadData(${pages})">${pages}</button>`;
+    html += `<button class="page-btn" onclick="loadData(${page+1})" ${page>=pages?'disabled':''}><i class="fas fa-chevron-right"></i></button>`;
+    html += `<span class="page-info" style="margin-left:8px">${total} registo(s)</span>`;
+    p.innerHTML = html;
+}
+
+function filterTable() {
+    const q = document.getElementById('searchBox').value.toLowerCase();
+    document.querySelectorAll('#tableBody tr').forEach(tr => {
+        const search = tr.dataset.search || '';
+        tr.style.display = search.toLowerCase().includes(q) ? '' : 'none';
+    });
+}
+
+function exportCSV() {
+    window.location.href = `/auditoria/export?pwd=${encodeURIComponent(pwd)}`;
+}
+
+function logout() {
+    pwd = ''; currentPage = 1;
+    document.getElementById('dashboard').classList.remove('show');
+    document.getElementById('loginWrap').style.display = 'flex';
+    document.getElementById('pwdInput').value = '';
+    document.getElementById('loginError').classList.remove('show');
+}
+
+// Auto-refresh a cada 30 segundos se estiver no dashboard
+setInterval(() => { if (pwd) loadData(currentPage); }, 30000);
+</script>
+</body>
+</html>
