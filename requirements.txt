@@ -1,0 +1,6 @@
+flask
+PyPDF2
+Werkzeug
+gunicorn
+reportlab
+pymupdf
