@@ -26,8 +26,15 @@ ALLOWED_EXTENSIONS = {'pdf'}
 AUDIT_DB = 'auditoria.db'
 AUDIT_PASSWORD = os.environ.get('AUDIT_PASSWORD', 'admin123')
 
+def get_db():
+    """Ligação SQLite thread-safe"""
+    conn = sqlite3.connect(AUDIT_DB, check_same_thread=False)
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA synchronous=NORMAL')
+    return conn
+
 def init_audit_db():
-    conn = sqlite3.connect(AUDIT_DB)
+    conn = get_db()
     conn.execute('''
         CREATE TABLE IF NOT EXISTS acessos (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -168,7 +175,7 @@ def geo_lookup_async(ip, row_id):
         if d.get('status') == 'success':
             asn_raw = d.get('as', '')
             asn_num = asn_raw.split(' ')[0] if asn_raw else ''
-            conn = sqlite3.connect(AUDIT_DB)
+            conn = get_db()
             conn.execute('''UPDATE acessos SET
                 pais=?,pais_code=?,regiao=?,cidade=?,zip_geo=?,
                 lat=?,lon=?,timezone_geo=?,isp=?,org=?,asn=?,
@@ -190,7 +197,7 @@ def log_access(operacao=None, filename=None, status=200, client_data=None):
     ua_str = request.headers.get('User-Agent', '')[:300]
     ua_parsed = parse_ua(ua_str)
     cd = client_data or {}
-    conn = sqlite3.connect(AUDIT_DB)
+    conn = get_db()
     cur = conn.execute('''
         INSERT INTO acessos
           (ts,ip,rota,metodo,operacao,filename,status,user_agent,
@@ -1061,7 +1068,7 @@ def telemetria():
         session_id = d.get('session_id')
         ip = get_real_ip()
         ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        conn = sqlite3.connect(AUDIT_DB)
+        conn = get_db()
         # Actualizar o registo mais recente deste IP (da visita /)
         row = conn.execute(
             'SELECT id FROM acessos WHERE ip=? ORDER BY id DESC LIMIT 1', (ip,)
@@ -1328,7 +1335,7 @@ def converter_imagens_rota():
 def app_stats():
     """Estatísticas públicas da aplicação"""
     try:
-        conn = sqlite3.connect(AUDIT_DB)
+        conn = get_db()
         total_ops = conn.execute("SELECT COUNT(*) FROM acessos WHERE operacao IS NOT NULL AND operacao != 'upload'").fetchone()[0]
         total_uploads = conn.execute("SELECT COUNT(*) FROM acessos WHERE operacao='upload'").fetchone()[0]
         paises = conn.execute("SELECT COUNT(DISTINCT ip) FROM acessos").fetchone()[0]
@@ -1367,7 +1374,7 @@ def auditoria_dados():
     page = int(request.args.get('page', 1))
     per = 50
     offset = (page - 1) * per
-    conn = sqlite3.connect(AUDIT_DB)
+    conn = get_db()
     conn.row_factory = sqlite3.Row
     total = conn.execute('SELECT COUNT(*) FROM acessos').fetchone()[0]
     rows = conn.execute(
@@ -1417,7 +1424,7 @@ def auditoria_export():
     pwd = request.args.get('pwd', '')
     if pwd != AUDIT_PASSWORD:
         return jsonify({'error': 'Sem autorização'}), 403
-    conn = sqlite3.connect(AUDIT_DB)
+    conn = get_db()
     rows = conn.execute('SELECT * FROM acessos ORDER BY id DESC').fetchall()
     conn.close()
     lines = ['id,ts,ip,pais,regiao,cidade,lat,lon,isp,rota,metodo,operacao,filename,status,user_agent']
