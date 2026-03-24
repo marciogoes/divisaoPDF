@@ -8,3 +8,4 @@ requests
 pytesseract
 Pillow
 qrcode[pil]
+docx2pdf

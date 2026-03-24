@@ -968,8 +968,125 @@
 
     <div class="footer">
         <p><span data-i18n="footer">Feito com</span> <i class="fas fa-heart" style="color:#ec4899"></i> Python + Flask &bull; v2.0</p>
-        <p style="margin-top:8px;font-size:.8rem;color:rgba(255,255,255,.3)">Desenvolvido por <strong style="color:rgba(255,255,255,.5)">Marcio Goes do Nascimento</strong></p>
+        <p style="margin-top:8px;font-size:.8rem;color:rgba(255,255,255,.3)">
+            Desenvolvido por <strong style="color:rgba(255,255,255,.5)">Marcio Goes do Nascimento</strong>
+            &nbsp;&bull;&nbsp;
+            <button onclick="document.getElementById('modalSobre').style.display='flex'" style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:.8rem;text-decoration:underline;font-family:inherit">
+                <i class="fas fa-info-circle"></i> Sobre &amp; Referências
+            </button>
+            &nbsp;&bull;&nbsp;
+            <a href="/auditoria" target="_blank" style="color:rgba(255,255,255,.25);font-size:.75rem;text-decoration:none">
+                <i class="fas fa-shield-alt"></i> Auditoria
+            </a>
+        </p>
     </div>
+</div>
+
+<!-- ═══ MODAL SOBRE & REFERÊNCIAS ═══ -->
+<div id="modalSobre" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.87);backdrop-filter:blur(14px);z-index:5000;align-items:flex-start;justify-content:center;padding:30px 20px;overflow-y:auto">
+<div style="background:linear-gradient(160deg,#1a1740,#2a2560);border:1px solid rgba(255,255,255,.13);border-radius:28px;width:100%;max-width:720px;margin:auto;padding:42px;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.5)">
+
+    <!-- Fechar -->
+    <button onclick="document.getElementById('modalSobre').style.display='none'" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
+        <i class="fas fa-times"></i>
+    </button>
+
+    <!-- Logo + Título -->
+    <div style="text-align:center;margin-bottom:32px">
+        <div style="width:72px;height:72px;background:linear-gradient(135deg,#6366f1,#ec4899);border-radius:22px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 15px 35px rgba(99,102,241,.45);animation:pulse 2s ease-in-out infinite">
+            <i class="fas fa-cut" style="font-size:32px"></i>
+        </div>
+        <h2 style="font-size:1.9rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px">PDF Splitter PRO</h2>
+        <p style="color:rgba(255,255,255,.45);font-size:.9rem">Ferramenta gratuita e open-source de manipulação de PDFs &bull; <strong style="color:rgba(255,255,255,.6)">v2.0</strong></p>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap">
+            <a href="https://github.com/marciogoes/divisaoPDF" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:20px;color:rgba(255,255,255,.8);text-decoration:none;font-size:.82rem;font-weight:600;transition:all .2s" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
+                <i class="fab fa-github"></i> GitHub
+            </a>
+            <a href="https://web-production-38f71.up.railway.app" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:7px;padding:8px 18px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:20px;color:#818cf8;text-decoration:none;font-size:.82rem;font-weight:600">
+                <i class="fas fa-external-link-alt"></i> App Online
+            </a>
+        </div>
+    </div>
+
+    <!-- Desenvolvedor -->
+    <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:16px;padding:20px;margin-bottom:18px">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.35);margin-bottom:14px">
+            <i class="fas fa-user" style="color:#6366f1;margin-right:6px"></i> Desenvolvedor
+        </div>
+        <div style="display:flex;align-items:center;gap:16px">
+            <div style="width:52px;height:52px;background:linear-gradient(135deg,#6366f1,#ec4899);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:900;flex-shrink:0">M</div>
+            <div>
+                <div style="font-weight:700;font-size:1.05rem">Marcio Goes do Nascimento</div>
+                <div style="color:rgba(255,255,255,.45);font-size:.82rem;margin-top:4px">
+                    <i class="fas fa-map-marker-alt" style="color:#ec4899;margin-right:4px"></i>Manaus, Amazonas, Brasil
+                </div>
+                <a href="https://github.com/marciogoes" target="_blank" rel="noopener" style="color:rgba(255,255,255,.35);font-size:.78rem;text-decoration:none;display:inline-flex;align-items:center;gap:5px;margin-top:4px">
+                    <i class="fab fa-github"></i> github.com/marciogoes
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tecnologias -->
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;margin-bottom:18px">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.35);margin-bottom:16px">
+            <i class="fas fa-code" style="color:#10b981;margin-right:6px"></i> Tecnologias &amp; Bibliotecas
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="background:rgba(99,102,241,.08);border-radius:12px;padding:14px;border:1px solid rgba(99,102,241,.15)">
+                <div style="font-size:.78rem;font-weight:700;color:#818cf8;margin-bottom:10px"><i class="fab fa-python"></i> Backend</div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                    <a href="https://flask.palletsprojects.com" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>Flask</span><span style="color:rgba(255,255,255,.3)">Web framework</span></a>
+                    <a href="https://pypdf2.readthedocs.io" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>PyPDF2</span><span style="color:rgba(255,255,255,.3)">Manipulação PDF</span></a>
+                    <a href="https://pymupdf.readthedocs.io" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>pymupdf (fitz)</span><span style="color:rgba(255,255,255,.3)">Preview &amp; OCR</span></a>
+                    <a href="https://docs.reportlab.com" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>reportlab</span><span style="color:rgba(255,255,255,.3)">Marca d'água, QR</span></a>
+                    <a href="https://pillow.readthedocs.io" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>Pillow</span><span style="color:rgba(255,255,255,.3)">Imagens</span></a>
+                    <a href="https://pytesseract.readthedocs.io" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>pytesseract</span><span style="color:rgba(255,255,255,.3)">OCR</span></a>
+                    <a href="https://github.com/tesseract-ocr/tesseract" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>Tesseract OCR</span><span style="color:rgba(255,255,255,.3)">Motor OCR</span></a>
+                    <a href="https://github.com/lincolnloop/python-qrcode" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>qrcode</span><span style="color:rgba(255,255,255,.3)">QR Code</span></a>
+                    <a href="https://gunicorn.org" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>Gunicorn</span><span style="color:rgba(255,255,255,.3)">Servidor WSGI</span></a>
+                </div>
+            </div>
+            <div style="background:rgba(16,185,129,.08);border-radius:12px;padding:14px;border:1px solid rgba(16,185,129,.15)">
+                <div style="font-size:.78rem;font-weight:700;color:#34d399;margin-bottom:10px"><i class="fab fa-js"></i> Frontend &amp; Infraestrutura</div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                    <a href="https://fonts.google.com/specimen/Inter" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>Inter (Google Fonts)</span><span style="color:rgba(255,255,255,.3)">Tipografia</span></a>
+                    <a href="https://fontawesome.com" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>Font Awesome 6</span><span style="color:rgba(255,255,255,.3)">Ícones</span></a>
+                    <a href="https://railway.app" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>Railway</span><span style="color:rgba(255,255,255,.3)">Deploy / Hosting</span></a>
+                    <a href="https://ip-api.com" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>ip-api.com</span><span style="color:rgba(255,255,255,.3)">Geolocalização</span></a>
+                    <a href="https://sqlite.org" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>SQLite</span><span style="color:rgba(255,255,255,.3)">Auditoria / BD</span></a>
+                    <a href="https://python.org" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>Python 3</span><span style="color:rgba(255,255,255,.3)">Linguagem</span></a>
+                    <a href="https://github.com/marciogoes/divisaoPDF" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6);font-size:.78rem;text-decoration:none;display:flex;justify-content:space-between" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,.6)'"><span>GitHub</span><span style="color:rgba(255,255,255,.3)">Código fonte</span></a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Licença & Aviso -->
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;margin-bottom:18px">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgba(255,255,255,.35);margin-bottom:12px">
+            <i class="fas fa-balance-scale" style="color:#f59e0b;margin-right:6px"></i> Licença &amp; Uso
+        </div>
+        <p style="font-size:.8rem;color:rgba(255,255,255,.55);line-height:1.7">
+            Esta ferramenta é disponibilizada <strong style="color:rgba(255,255,255,.8)">gratuitamente</strong> para uso pessoal e profissional.
+            Os ficheiros enviados são processados localmente no servidor e eliminados automaticamente após o processamento.
+            Não são armazenados conteúdos de documentos &mdash; apenas metadados de acesso para fins de auditoria.
+        </p>
+        <p style="font-size:.78rem;color:rgba(255,255,255,.35);margin-top:10px;line-height:1.6">
+            O código-fonte está disponível no <a href="https://github.com/marciogoes/divisaoPDF" target="_blank" rel="noopener" style="color:#818cf8">GitHub</a>.
+            Bibliotecas de terceiros mantêm as suas próprias licenças (MIT, Apache 2.0, LGPL).
+        </p>
+    </div>
+
+    <!-- Versão -->
+    <div style="text-align:center;padding-top:8px;border-top:1px solid rgba(255,255,255,.07)">
+        <p style="font-size:.75rem;color:rgba(255,255,255,.25)">
+            PDF Splitter PRO &bull; v2.0 &bull; 2025
+            &bull; Desenvolvido com <i class="fas fa-heart" style="color:#ec4899"></i> em Manaus, Brasil
+        </p>
+    </div>
+
+</div>
 </div>
 
 <!-- Progress Overlay -->
@@ -1832,6 +1949,16 @@ async function loadStats() {
 }
 loadStats();
 setInterval(loadStats, 60000);
+
+// Fechar modal ao clicar no backdrop
+document.getElementById('modalSobre').addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+});
+
+// Fechar modal com Escape
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('modalSobre').style.display = 'none';
+});
 </script>
 </body>
 </html>

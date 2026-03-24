@@ -226,6 +226,16 @@ except ImportError:
 try:
     import pytesseract
     from PIL import Image as PILImage
+    # Caminho padrão no Windows — ignora se não existir
+    _tess_paths = [
+        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+    ]
+    import os as _os
+    for _p in _tess_paths:
+        if _os.path.exists(_p):
+            pytesseract.pytesseract.tesseract_cmd = _p
+            break
     pytesseract.get_tesseract_version()
     OCR_AVAILABLE = True
 except Exception:
