@@ -1449,7 +1449,7 @@ function updateExecuteButton() {
 document.getElementById('btnExecutar').addEventListener('click', async () => {
     if (!currentPdfInfo || !currentOperation) return;
     showProgress('Processando PDF...', 'Aguarde um momento');
-    const payload = { operacao:currentOperation, filepath:currentPdfInfo.filepath, session_id:currentPdfInfo.session_id };
+    const payload = { operacao:currentOperation, session_id:currentPdfInfo.session_id };
     switch (currentOperation) {
         case 'dividir_partes':    payload.num_partes = +document.getElementById('numPartes').value || 2; break;
         case 'dividir_paginas':   payload.paginas_por_parte = +document.getElementById('paginasPorParte').value || 10; break;
@@ -1647,7 +1647,7 @@ async function loadPreviewPages() {
     try {
         const r = await fetch('/preview_pages', {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ filepath: currentPdfInfo.filepath, max_pages: 200 })
+            body: JSON.stringify({ session_id: currentPdfInfo.session_id, max_pages: 200 })
         });
         const d = await r.json();
         loading.style.display = 'none';
@@ -1909,7 +1909,7 @@ document.getElementById('btnExecutar').addEventListener('click', async () => {
     };
     if (!extras[currentOperation]) return; // deixa o handler principal tratar
     showProgress('Processando...', 'Aguarde...');
-    const payload = { operacao: currentOperation, filepath: currentPdfInfo.filepath, session_id: currentPdfInfo.session_id, ...extras[currentOperation]() };
+    const payload = { operacao: currentOperation, session_id: currentPdfInfo.session_id, ...extras[currentOperation]() };
     try {
         const r = await fetch('/processar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
         const d = await r.json();
