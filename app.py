@@ -15,12 +15,31 @@ except ImportError:
     REQUESTS_AVAILABLE = False
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB (Railway limit)
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf'}
+
+# ─── Registo seguro de sessões (server-side) ─────────────────────────────────
+# Mapeia session_id -> caminho real do ficheiro no servidor
+# Assim o cliente NUNCA envia o filepath — apenas o session_id
+_SESSION_FILES = {}  # { session_id: filepath_absoluto }
+_SESSION_LOCK  = threading.Lock()
+
+def session_set(session_id, filepath):
+    with _SESSION_LOCK:
+        _SESSION_FILES[session_id] = os.path.abspath(filepath)
+
+def session_get(session_id):
+    """Devolve o filepath validado ou None se sessão inválida."""
+    with _SESSION_LOCK:
+        return _SESSION_FILES.get(session_id)
+
+def session_delete(session_id):
+    with _SESSION_LOCK:
+        _SESSION_FILES.pop(session_id, None)
 
 # ─── Auditoria (SQLite) ───────────────────────────────────────────────────────
 AUDIT_DB = 'auditoria.db'
@@ -1108,7 +1127,10 @@ def get_info():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{session_id}_{filename}")
         file.save(filepath)
         info = get_pdf_info(filepath)
-        info.update({'session_id': session_id, 'filename': filename, 'filepath': filepath})
+        # Guardar filepath no servidor — cliente recebe apenas session_id
+        session_set(session_id, filepath)
+        info.update({'session_id': session_id, 'filename': filename})
+        # NUNCA devolver o filepath real ao cliente
         log_access(operacao='upload', filename=filename)
         return jsonify(info)
     except Exception as e:
@@ -1120,10 +1142,11 @@ def preview_pages_route():
     if not PYMUPDF_AVAILABLE:
         return jsonify({'error': 'pymupdf não instalado', 'cmd': 'py -m pip install pymupdf'}), 400
     data = request.json
-    filepath = data.get('filepath')
+    session_id = data.get('session_id')
     max_pages = int(data.get('max_pages', 100))
+    filepath = session_get(session_id)
     if not filepath or not os.path.exists(filepath):
-        return jsonify({'error': 'Arquivo não encontrado'}), 400
+        return jsonify({'error': 'Sessão expirada. Faça o upload novamente.'}), 400
     try:
         doc = fitz.open(filepath)
         pages = []
@@ -1142,10 +1165,11 @@ def preview_pages_route():
 def processar():
     data = request.json
     operacao = data.get('operacao')
-    filepath = data.get('filepath')
     session_id = data.get('session_id')
+    # filepath vem do servidor — NUNCA do cliente
+    filepath = session_get(session_id)
     if not filepath or not os.path.exists(filepath):
-        return jsonify({'error': 'Arquivo não encontrado. Faça o upload novamente.'}), 400
+        return jsonify({'error': 'Sessão expirada. Faça o upload novamente.'}), 400
     try:
         pasta = os.path.join(app.config['OUTPUT_FOLDER'], session_id)
         os.makedirs(pasta, exist_ok=True)
@@ -1358,6 +1382,7 @@ def limpar_sessao(session_id):
         if fn.startswith(session_id):
             try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], fn))
             except: pass
+    session_delete(session_id)
     return jsonify({'success': True})
 
 # ─── Rotas de Auditoria ───────────────────────────────────────────────────────
