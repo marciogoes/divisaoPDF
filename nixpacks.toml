@@ -1,2 +1,2 @@
 [phases.setup]
-nixPkgs = ["tesseract"]
+nixPkgs = ["python311", "python311Packages.pip", "tesseract"]
