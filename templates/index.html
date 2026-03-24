@@ -1195,6 +1195,28 @@ const sessionHistory = [];
 checkDependencies();
 setLang(currentLang);
 
+// ─── Telemetria de tecnologia ───────────────────────────────────────────────────────────────
+(function sendTelemetry() {
+    try {
+        const nav = navigator;
+        const conn = nav.connection || nav.mozConnection || nav.webkitConnection || {};
+        fetch('/telemetria', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                screen_res:      `${screen.width}x${screen.height}`,
+                viewport:        `${window.innerWidth}x${window.innerHeight}`,
+                color_depth:     screen.colorDepth,
+                lang:            nav.language || nav.userLanguage || '',
+                timezone:        Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+                referrer:        document.referrer || '',
+                touch:           ('ontouchstart' in window || nav.maxTouchPoints > 0) ? 1 : 0,
+                connection_type: conn.effectiveType || conn.type || ''
+            })
+        }).catch(() => {});
+    } catch(e) {}
+})();
+
 async function checkDependencies() {
     try {
         const r = await fetch('/dependencias');

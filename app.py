@@ -30,23 +30,66 @@ def init_audit_db():
     conn = sqlite3.connect(AUDIT_DB)
     conn.execute('''
         CREATE TABLE IF NOT EXISTS acessos (
-            id        INTEGER PRIMARY KEY AUTOINCREMENT,
-            ts        TEXT    NOT NULL,
-            ip        TEXT,
-            pais      TEXT,
-            regiao    TEXT,
-            cidade    TEXT,
-            lat       REAL,
-            lon       REAL,
-            isp       TEXT,
-            rota      TEXT,
-            metodo    TEXT,
-            operacao  TEXT,
-            filename  TEXT,
-            status    INTEGER,
-            user_agent TEXT
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts               TEXT NOT NULL,
+            -- Rede / IP
+            ip               TEXT,
+            pais             TEXT,
+            pais_code        TEXT,
+            regiao           TEXT,
+            cidade           TEXT,
+            zip_geo          TEXT,
+            lat              REAL,
+            lon              REAL,
+            timezone_geo     TEXT,
+            isp              TEXT,
+            org              TEXT,
+            asn              TEXT,
+            proxy            INTEGER DEFAULT 0,
+            vpn              INTEGER DEFAULT 0,
+            hosting          INTEGER DEFAULT 0,
+            -- Browser / OS (User-Agent)
+            user_agent       TEXT,
+            browser          TEXT,
+            browser_version  TEXT,
+            browser_engine   TEXT,
+            os_name          TEXT,
+            os_version       TEXT,
+            device_type      TEXT,
+            is_bot           INTEGER DEFAULT 0,
+            -- Cliente (JavaScript)
+            screen_res       TEXT,
+            viewport         TEXT,
+            color_depth      INTEGER,
+            lang_browser     TEXT,
+            timezone_browser TEXT,
+            referrer         TEXT,
+            touch_support    INTEGER DEFAULT 0,
+            connection_type  TEXT,
+            -- App
+            rota             TEXT,
+            metodo           TEXT,
+            operacao         TEXT,
+            filename         TEXT,
+            status           INTEGER
         )
     ''')
+    # migrar colunas antigas se necessario
+    cols_needed = [
+        ('pais_code','TEXT'), ('zip_geo','TEXT'), ('timezone_geo','TEXT'),
+        ('org','TEXT'), ('asn','TEXT'), ('proxy','INTEGER'),
+        ('vpn','INTEGER'), ('hosting','INTEGER'),
+        ('browser','TEXT'), ('browser_version','TEXT'), ('browser_engine','TEXT'),
+        ('os_name','TEXT'), ('os_version','TEXT'), ('device_type','TEXT'),
+        ('is_bot','INTEGER'), ('screen_res','TEXT'), ('viewport','TEXT'),
+        ('color_depth','INTEGER'), ('lang_browser','TEXT'),
+        ('timezone_browser','TEXT'), ('referrer','TEXT'),
+        ('touch_support','INTEGER'), ('connection_type','TEXT'),
+    ]
+    existing = {r[1] for r in conn.execute('PRAGMA table_info(acessos)').fetchall()}
+    for col, typ in cols_needed:
+        if col not in existing:
+            conn.execute(f'ALTER TABLE acessos ADD COLUMN {col} {typ}')
     conn.commit(); conn.close()
 
 init_audit_db()
@@ -58,40 +101,112 @@ def get_real_ip():
             return v.split(',')[0].strip()
     return request.remote_addr
 
+def parse_ua(ua_str):
+    """Parse simples de User-Agent sem dependências externas."""
+    ua = ua_str or ''
+    result = {'browser':'Desconhecido','browser_version':'','browser_engine':'',
+              'os_name':'Desconhecido','os_version':'','device_type':'Desktop','is_bot':0}
+    ul = ua.lower()
+    # Bot detection
+    bots = ['bot','crawl','spider','slurp','mediapartners','adsbot','facebookexternalhit',
+            'twitterbot','linkedinbot','whatsapp','telegram','pinterest','slack','discord']
+    if any(b in ul for b in bots):
+        result['is_bot'] = 1
+        result['device_type'] = 'Bot'
+        result['browser'] = 'Bot'
+        return result
+    # Device
+    if any(x in ul for x in ['mobile','android','iphone','ipod','blackberry','windows phone']):
+        result['device_type'] = 'Mobile'
+    elif any(x in ul for x in ['ipad','tablet']):
+        result['device_type'] = 'Tablet'
+    # Browser + engine
+    import re
+    def _v(pattern):
+        m = re.search(pattern, ua, re.I)
+        return m.group(1) if m else ''
+    if 'Edg/' in ua or 'EdgA/' in ua:
+        result['browser'] = 'Edge'; result['browser_version'] = _v(r'Edg[A-Z]?/([\d.]+)'); result['browser_engine'] = 'Blink'
+    elif 'OPR/' in ua or 'Opera' in ua:
+        result['browser'] = 'Opera'; result['browser_version'] = _v(r'OPR/([\d.]+)') or _v(r'Opera/([\d.]+)'); result['browser_engine'] = 'Blink'
+    elif 'Chrome/' in ua and 'Safari' in ua:
+        result['browser'] = 'Chrome'; result['browser_version'] = _v(r'Chrome/([\d.]+)'); result['browser_engine'] = 'Blink'
+    elif 'Firefox/' in ua:
+        result['browser'] = 'Firefox'; result['browser_version'] = _v(r'Firefox/([\d.]+)'); result['browser_engine'] = 'Gecko'
+    elif 'Safari/' in ua and 'Chrome' not in ua:
+        result['browser'] = 'Safari'; result['browser_version'] = _v(r'Version/([\d.]+)'); result['browser_engine'] = 'WebKit'
+    elif 'MSIE' in ua or 'Trident' in ua:
+        result['browser'] = 'Internet Explorer'; result['browser_version'] = _v(r'(?:MSIE |rv:)([\d.]+)'); result['browser_engine'] = 'Trident'
+    elif 'SamsungBrowser/' in ua:
+        result['browser'] = 'Samsung Browser'; result['browser_version'] = _v(r'SamsungBrowser/([\d.]+)'); result['browser_engine'] = 'Blink'
+    # OS
+    if 'Windows NT' in ua:
+        result['os_name'] = 'Windows'
+        nt_map = {'10.0':'10/11','6.3':'8.1','6.2':'8','6.1':'7','6.0':'Vista','5.1':'XP'}
+        nt = _v(r'Windows NT ([\d.]+)')
+        result['os_version'] = nt_map.get(nt, nt)
+    elif 'Android' in ua:
+        result['os_name'] = 'Android'; result['os_version'] = _v(r'Android ([\d._]+)')
+    elif 'iPhone OS' in ua or 'CPU OS' in ua:
+        result['os_name'] = 'iOS'; result['os_version'] = _v(r'(?:iPhone OS|CPU OS) ([\d_]+)').replace('_','.')
+    elif 'Mac OS X' in ua:
+        result['os_name'] = 'macOS'; result['os_version'] = _v(r'Mac OS X ([\d_.]+)').replace('_','.')
+    elif 'Linux' in ua:
+        result['os_name'] = 'Linux'
+    elif 'CrOS' in ua:
+        result['os_name'] = 'ChromeOS'
+    return result
+
 def geo_lookup_async(ip, row_id):
-    """Busca localização geográfica em background e actualiza o registo."""
-    if not REQUESTS_AVAILABLE:
-        return
-    if ip in ('127.0.0.1', '::1', 'localhost'):
+    """Busca geo + rede completa via ip-api em background."""
+    if not REQUESTS_AVAILABLE or ip in ('127.0.0.1', '::1', 'localhost', ''):
         return
     try:
-        r = req_lib.get(f'http://ip-api.com/json/{ip}?fields=status,country,regionName,city,lat,lon,isp',
-                        timeout=4)
+        fields = 'status,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,proxy,hosting'
+        r = req_lib.get(f'http://ip-api.com/json/{ip}?fields={fields}', timeout=5)
         d = r.json()
         if d.get('status') == 'success':
+            asn_raw = d.get('as', '')
+            asn_num = asn_raw.split(' ')[0] if asn_raw else ''
             conn = sqlite3.connect(AUDIT_DB)
-            conn.execute('''UPDATE acessos SET pais=?,regiao=?,cidade=?,lat=?,lon=?,isp=? WHERE id=?''',
-                         (d.get('country'), d.get('regionName'), d.get('city'),
-                          d.get('lat'), d.get('lon'), d.get('isp'), row_id))
+            conn.execute('''UPDATE acessos SET
+                pais=?,pais_code=?,regiao=?,cidade=?,zip_geo=?,
+                lat=?,lon=?,timezone_geo=?,isp=?,org=?,asn=?,
+                proxy=?,hosting=?
+                WHERE id=?''',
+                (d.get('country'), d.get('countryCode'), d.get('regionName'),
+                 d.get('city'), d.get('zip'), d.get('lat'), d.get('lon'),
+                 d.get('timezone'), d.get('isp'), d.get('org'), asn_num,
+                 int(d.get('proxy', False)), int(d.get('hosting', False)),
+                 row_id))
             conn.commit(); conn.close()
     except Exception:
         pass
 
-def log_access(operacao=None, filename=None, status=200):
+def log_access(operacao=None, filename=None, status=200, client_data=None):
+    """Regista acesso com dados de browser, OS e cliente."""
     ip = get_real_ip()
     ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    ua_str = request.headers.get('User-Agent', '')[:300]
+    ua_parsed = parse_ua(ua_str)
+    cd = client_data or {}
     conn = sqlite3.connect(AUDIT_DB)
-    cur = conn.execute(
-        '''INSERT INTO acessos (ts,ip,rota,metodo,operacao,filename,status,user_agent)
-           VALUES (?,?,?,?,?,?,?,?)''',
-        (ts, ip, request.path, request.method,
-         operacao, filename, status,
-         request.headers.get('User-Agent', '')[:250])
-    )
+    cur = conn.execute('''
+        INSERT INTO acessos
+          (ts,ip,rota,metodo,operacao,filename,status,user_agent,
+           browser,browser_version,browser_engine,os_name,os_version,device_type,is_bot,
+           screen_res,viewport,color_depth,lang_browser,timezone_browser,
+           referrer,touch_support,connection_type)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+        (ts, ip, request.path, request.method, operacao, filename, status, ua_str,
+         ua_parsed['browser'], ua_parsed['browser_version'], ua_parsed['browser_engine'],
+         ua_parsed['os_name'], ua_parsed['os_version'], ua_parsed['device_type'], ua_parsed['is_bot'],
+         cd.get('screen_res'), cd.get('viewport'), cd.get('color_depth'),
+         cd.get('lang'), cd.get('timezone'), cd.get('referrer','')[:200],
+         int(cd.get('touch', 0)), cd.get('connection_type','')))
     row_id = cur.lastrowid
     conn.commit(); conn.close()
-    t = threading.Thread(target=geo_lookup_async, args=(ip, row_id), daemon=True)
-    t.start()
+    threading.Thread(target=geo_lookup_async, args=(ip, row_id), daemon=True).start()
     return row_id
 
 # ─── Dependências opcionais ───────────────────────────────────────────────────
@@ -925,9 +1040,35 @@ def recortar_margens_pdf(caminho_pdf, margem_mm, pasta_saida):
 
 @app.before_request
 def before():
-    # Regista todas as visitas à página principal e operações
-    if request.path in ('/', ) and request.method == 'GET':
+    if request.path == '/' and request.method == 'GET':
         log_access()
+
+@app.route('/telemetria', methods=['POST'])
+def telemetria():
+    """Recebe dados de tecnologia do cliente (browser, ecrã, rede...)"""
+    try:
+        d = request.json or {}
+        session_id = d.get('session_id')
+        ip = get_real_ip()
+        ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        conn = sqlite3.connect(AUDIT_DB)
+        # Actualizar o registo mais recente deste IP (da visita /)
+        row = conn.execute(
+            'SELECT id FROM acessos WHERE ip=? ORDER BY id DESC LIMIT 1', (ip,)
+        ).fetchone()
+        if row:
+            conn.execute('''
+                UPDATE acessos SET
+                  screen_res=?,viewport=?,color_depth=?,lang_browser=?,
+                  timezone_browser=?,referrer=?,touch_support=?,connection_type=?
+                WHERE id=?''',
+                (d.get('screen_res'), d.get('viewport'), d.get('color_depth'),
+                 d.get('lang'), d.get('timezone'), d.get('referrer','')[:200],
+                 int(d.get('touch', 0)), d.get('connection_type',''), row[0]))
+        conn.commit(); conn.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/')
 def index():
@@ -1241,6 +1382,17 @@ def auditoria_dados():
     stats['por_hora'] = [dict(r) for r in conn.execute(
         "SELECT substr(ts,12,2) as hora, COUNT(*) as qtd FROM acessos GROUP BY hora ORDER BY hora"
     ).fetchall()]
+    stats['browsers'] = [dict(r) for r in conn.execute(
+        "SELECT browser, COUNT(*) as qtd FROM acessos WHERE browser IS NOT NULL AND browser != '' GROUP BY browser ORDER BY qtd DESC"
+    ).fetchall()]
+    stats['os'] = [dict(r) for r in conn.execute(
+        "SELECT os_name, COUNT(*) as qtd FROM acessos WHERE os_name IS NOT NULL AND os_name != '' GROUP BY os_name ORDER BY qtd DESC"
+    ).fetchall()]
+    stats['devices'] = [dict(r) for r in conn.execute(
+        "SELECT device_type, COUNT(*) as qtd FROM acessos WHERE device_type IS NOT NULL GROUP BY device_type ORDER BY qtd DESC"
+    ).fetchall()]
+    stats['proxies'] = conn.execute("SELECT COUNT(*) FROM acessos WHERE proxy=1 OR vpn=1").fetchone()[0]
+    stats['bots'] = conn.execute("SELECT COUNT(*) FROM acessos WHERE is_bot=1").fetchone()[0]
     conn.close()
     return jsonify({
         'rows': [dict(r) for r in rows],
