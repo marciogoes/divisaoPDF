@@ -378,6 +378,46 @@
                         <i class="fas fa-tags"></i><span class="label" data-i18n="op_editar_metadados">Metadados</span>
                     </div>
 
+                    <div class="ops-section-label" data-i18n="secTransform">🔄 Transformar</div>
+                    <div class="operation-btn op-edit" data-op="redimensionar">
+                        <i class="fas fa-expand-arrows-alt"></i><span class="label" data-i18n="op_redimensionar">Redimensionar</span>
+                    </div>
+                    <div class="operation-btn op-add" data-op="cabecalho_rodape">
+                        <i class="fas fa-heading"></i><span class="label" data-i18n="op_cabecalho_rodape">Cabeçalho/Rodapé</span>
+                        <span class="req-badge">reportlab</span>
+                    </div>
+                    <div class="operation-btn op-add" data-op="qrcode">
+                        <i class="fas fa-qrcode"></i><span class="label" data-i18n="op_qrcode">QR Code</span>
+                        <span class="req-badge">qrcode</span>
+                    </div>
+                    <div class="operation-btn op-edit" data-op="paginas_branco">
+                        <i class="fas fa-file"></i><span class="label" data-i18n="op_paginas_branco">Inserir Branco</span>
+                    </div>
+                    <div class="operation-btn op-image" data-op="ajustar_brilho">
+                        <i class="fas fa-sun"></i><span class="label" data-i18n="op_ajustar_brilho">Ajustar Brilho</span>
+                        <span class="req-badge">pymupdf</span>
+                    </div>
+
+                    <div class="ops-section-label" data-i18n="secAdvanced">🧠 Avançado</div>
+                    <div class="operation-btn op-image" data-op="ocr">
+                        <i class="fas fa-glasses"></i><span class="label" data-i18n="op_ocr">OCR — Texto Pesquisável</span>
+                        <span class="req-badge">tesseract</span>
+                    </div>
+                    <div class="operation-btn op-extract" data-op="extrair_texto">
+                        <i class="fas fa-align-left"></i><span class="label" data-i18n="op_extrair_texto">Extrair Texto</span>
+                    </div>
+                    <div class="operation-btn op-add" data-op="assinatura">
+                        <i class="fas fa-signature"></i><span class="label" data-i18n="op_assinatura">Assinatura</span>
+                        <span class="req-badge">reportlab</span>
+                    </div>
+                    <div class="operation-btn op-add" data-op="carimbo">
+                        <i class="fas fa-stamp"></i><span class="label" data-i18n="op_carimbo">Carimbo</span>
+                        <span class="req-badge">reportlab</span>
+                    </div>
+                    <div class="operation-btn op-extract" data-op="extrair_formulario">
+                        <i class="fas fa-wpforms"></i><span class="label" data-i18n="op_extrair_formulario">Extrair Formulário</span>
+                    </div>
+
                     <div class="ops-section-label" data-i18n="secSecurity">🔒 Segurança &amp; Otimização</div>
                     <div class="operation-btn op-security" data-op="proteger">
                         <i class="fas fa-lock"></i><span class="label" data-i18n="op_proteger">Proteger Senha</span>
@@ -576,6 +616,175 @@
                     </div>
                 </div>
 
+                <div class="options-panel" id="optRedimensionar">
+                    <div class="options-title">⚙️ Redimensionar Páginas</div>
+                    <div class="form-group">
+                        <label>Formato destino</label>
+                        <select id="redimFormato">
+                            <option value="A4">A4 (210 × 297 mm) — mais comum</option>
+                            <option value="A3">A3 (297 × 420 mm)</option>
+                            <option value="A5">A5 (148 × 210 mm)</option>
+                            <option value="Letter">Letter (216 × 279 mm) — EUA</option>
+                            <option value="Legal">Legal (216 × 356 mm) — EUA</option>
+                        </select>
+                    </div>
+                    <div class="info-box"><i class="fas fa-info-circle"></i> A orientação (retrato/paisagem) é mantida automaticamente. O conteúdo será escalado proporcionalmente.</div>
+                </div>
+
+                <div class="options-panel" id="optCabecalhoRodape">
+                    <div class="options-title">⚙️ Cabeçalho e Rodapé</div>
+                    <div class="form-group">
+                        <label>Texto do cabeçalho (deixe vazio para não adicionar)</label>
+                        <input type="text" id="cabTexto" placeholder="Ex: Empresa XYZ — Confidencial">
+                    </div>
+                    <div class="form-group">
+                        <label>Texto do rodapé (deixe vazio para não adicionar)</label>
+                        <input type="text" id="rodTexto" placeholder="Ex: Página {pagina} de {total}">
+                    </div>
+                    <div class="info-box"><i class="fas fa-info-circle"></i> Usa <strong>{pagina}</strong> e <strong>{total}</strong> como variáveis dinâmicas. Ex: "Pág. {pagina}/{total}"</div>
+                    <div class="warn-box" style="margin-top:10px"><i class="fas fa-exclamation-triangle"></i> Requer <strong>reportlab</strong>.</div>
+                </div>
+
+                <div class="options-panel" id="optQrcode">
+                    <div class="options-title">⚙️ Adicionar QR Code</div>
+                    <div class="form-group">
+                        <label>URL ou texto do QR Code</label>
+                        <input type="text" id="qrUrl" placeholder="https://exemplo.com">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Posição</label>
+                            <select id="qrPosicao">
+                                <option value="bottom-right">Rodapé Direita</option>
+                                <option value="bottom-left">Rodapé Esquerda</option>
+                                <option value="top-right">Topo Direita</option>
+                                <option value="top-left">Topo Esquerda</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tamanho: <span id="qrTamVal">25</span>mm</label>
+                            <input type="range" id="qrTamanho" min="15" max="60" value="25" oninput="document.getElementById('qrTamVal').textContent=this.value">
+                        </div>
+                    </div>
+                    <div class="warn-box"><i class="fas fa-exclamation-triangle"></i> Requer <strong>qrcode</strong> e <strong>reportlab</strong>: <code style="background:rgba(255,255,255,.1);padding:2px 7px;border-radius:5px;font-size:.8rem">py -m pip install qrcode[pil] reportlab</code></div>
+                </div>
+
+                <div class="options-panel" id="optPaginasBranco">
+                    <div class="options-title">⚙️ Inserir Páginas em Branco</div>
+                    <div class="form-group">
+                        <label>Inserir antes das páginas (separadas por vírgula)</label>
+                        <input type="text" id="brancoPos" placeholder="Ex: 2, 5, 8 — insere antes dessas páginas">
+                        <div class="form-hint">Use o número total de páginas + 1 para inserir no final</div>
+                    </div>
+                    <div class="info-box"><i class="fas fa-info-circle"></i> Útil para impressão frente e verso ou para adicionar espaço para anotações.</div>
+                </div>
+
+                <div class="options-panel" id="optAjustarBrilho">
+                    <div class="options-title">⚙️ Ajustar Brilho das Páginas</div>
+                    <div class="form-group">
+                        <label>Brilho: <span id="brilhoVal">120</span>%</label>
+                        <input type="range" id="brilhoFator" min="30" max="200" value="120"
+                            oninput="document.getElementById('brilhoVal').textContent=this.value">
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:.75rem;color:rgba(255,255,255,.4);margin-top:-10px;margin-bottom:12px">
+                        <span>🌑 Muito escuro</span><span>Normal (100%)</span><span>☀️ Muito claro</span>
+                    </div>
+                    <div class="warn-box"><i class="fas fa-exclamation-triangle"></i> Requer <strong>pymupdf</strong> e <strong>Pillow</strong>. O processamento pode ser lento em PDFs grandes.</div>
+                </div>
+
+                <div class="options-panel" id="optOcr">
+                    <div class="options-title">⚙️ OCR — Tornar PDF Pesquisável</div>
+                    <div class="form-group">
+                        <label data-i18n="ocrLang">Idioma do documento</label>
+                        <select id="ocrLang">
+                            <option value="auto">Automático (PT + EN)</option>
+                            <option value="pt">Português</option>
+                            <option value="en">English</option>
+                            <option value="es">Español</option>
+                            <option value="fr">Français</option>
+                        </select>
+                    </div>
+                    <div class="warn-box"><i class="fas fa-exclamation-triangle"></i> Requer <strong>Tesseract OCR</strong> instalado no sistema e <strong>pytesseract</strong>: <code style="background:rgba(255,255,255,.1);padding:2px 7px;border-radius:5px;font-size:.8rem">py -m pip install pytesseract Pillow</code>. PDFs já com texto não precisam de OCR.</div>
+                </div>
+
+                <div class="options-panel" id="optExtrairTexto">
+                    <div class="options-title">⚙️ Extrair Texto do PDF</div>
+                    <div class="info-box"><i class="fas fa-info-circle"></i> Extrai todo o conteúdo de texto do PDF e salva como ficheiro <strong>.txt</strong>. Se o PDF for digitalizado sem OCR, o resultado pode estar vazio — use a operação OCR primeiro.</div>
+                </div>
+
+                <div class="options-panel" id="optAssinatura">
+                    <div class="options-title">⚙️ Adicionar Assinatura</div>
+                    <div class="form-group">
+                        <label>Nome / Texto da assinatura</label>
+                        <input type="text" id="assTexto" placeholder="Ex: João Silva, Dr. Maria Santos...">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Posição</label>
+                            <select id="assPosicao">
+                                <option value="bottom-right">Rodapé Direita</option>
+                                <option value="bottom-left">Rodapé Esquerda</option>
+                                <option value="bottom-center">Rodapé Centro</option>
+                                <option value="top-right">Cabeçalho Direita</option>
+                                <option value="top-left">Cabeçalho Esquerda</option>
+                                <option value="top-center">Cabeçalho Centro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tamanho: <span id="assTamanhoVal">14</span>pt</label>
+                            <input type="range" id="assTamanho" min="8" max="28" value="14" oninput="document.getElementById('assTamanhoVal').textContent=this.value">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cor da assinatura</label>
+                            <input type="color" id="assCor" value="#1a56db" style="height:48px;cursor:pointer">
+                        </div>
+                        <div class="form-group">
+                            <label>Páginas (vazio = todas)</label>
+                            <input type="text" id="assPaginas" placeholder="Ex: 1, 3 ou vazio">
+                        </div>
+                    </div>
+                    <div class="warn-box"><i class="fas fa-exclamation-triangle"></i> Requer <strong>reportlab</strong>. Esta é uma assinatura visual, não uma assinatura digital com valor legal.</div>
+                </div>
+
+                <div class="options-panel" id="optCarimbo">
+                    <div class="options-title">⚙️ Adicionar Carimbo</div>
+                    <div class="form-group">
+                        <label>Texto do carimbo</label>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+                            <button type="button" class="visual-select-btn" onclick="document.getElementById('carTexto').value='APROVADO'">APROVADO</button>
+                            <button type="button" class="visual-select-btn" onclick="document.getElementById('carTexto').value='CONFIDENCIAL'">CONFIDENCIAL</button>
+                            <button type="button" class="visual-select-btn" onclick="document.getElementById('carTexto').value='RASCUNHO'">RASCUNHO</button>
+                            <button type="button" class="visual-select-btn" onclick="document.getElementById('carTexto').value='CANCELADO'">CANCELADO</button>
+                            <button type="button" class="visual-select-btn" onclick="document.getElementById('carTexto').value='CÓPIA'">CÓPIA</button>
+                        </div>
+                        <input type="text" id="carTexto" value="APROVADO" placeholder="Texto do carimbo">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Posição</label>
+                            <select id="carPosicao">
+                                <option value="top-right">Topo Direita</option>
+                                <option value="top-left">Topo Esquerda</option>
+                                <option value="center">Centro</option>
+                                <option value="bottom-right">Rodapé Direita</option>
+                                <option value="bottom-left">Rodapé Esquerda</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Cor do carimbo</label>
+                            <input type="color" id="carCor" value="#16a34a" style="height:48px;cursor:pointer">
+                        </div>
+                    </div>
+                    <div class="warn-box"><i class="fas fa-exclamation-triangle"></i> Requer <strong>reportlab</strong>.</div>
+                </div>
+
+                <div class="options-panel" id="optExtrairFormulario">
+                    <div class="options-title">⚙️ Extrair Campos de Formulário</div>
+                    <div class="info-box"><i class="fas fa-info-circle"></i> Extrai todos os campos preenchíveis de um formulário PDF (nome, tipo e valor de cada campo) e salva como ficheiro <strong>.txt</strong>. Útil para verificar dados preenchidos em formulários PDF.</div>
+                </div>
+
                 <div class="options-panel" id="optProteger">
                     <div class="options-title">⚙️ Proteger com Senha</div>
                     <div class="form-group">
@@ -647,6 +856,14 @@
                         <i class="fas fa-th"></i>
                         <span data-i18n="viewPages">Ver Todas as Páginas</span>
                     </div>
+                    <div class="tool-item" id="btnComparar" style="--c:#f59e0b">
+                        <i class="fas fa-not-equal" style="background:rgba(245,158,11,.2);color:#f59e0b"></i>
+                        <span>Comparar 2 PDFs</span>
+                    </div>
+                    <div class="tool-item" id="btnConverterImg" style="--c:#a78bfa">
+                        <i class="fas fa-image" style="background:rgba(167,139,250,.2);color:#a78bfa"></i>
+                        <span>Imagens → PDF</span>
+                    </div>
                 </div>
             </div>
 
@@ -667,6 +884,42 @@
                 <button class="btn btn-success" id="btnExecutarMerge" disabled>
                     <i class="fas fa-object-group"></i> <span data-i18n="btnMerge">Mesclar</span>
                 </button>
+            </div>
+
+            <!-- Comparar PDFs -->
+            <div class="card" id="compararSection" style="display:none">
+                <h4 class="card-title"><i class="fas fa-not-equal" style="color:#f59e0b"></i> Comparar 2 PDFs</h4>
+                <p style="font-size:.85rem;color:rgba(255,255,255,.6);margin-bottom:15px">Seleciona 2 PDFs para ver as diferenças de texto entre eles.</p>
+                <div class="form-group"><label>PDF A</label><input type="file" id="compFile1" accept=".pdf" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px;width:100%;color:white;font-size:.85rem"></div>
+                <div class="form-group"><label>PDF B</label><input type="file" id="compFile2" accept=".pdf" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px;width:100%;color:white;font-size:.85rem"></div>
+                <button class="btn btn-success" id="btnExecutarComparar"><i class="fas fa-not-equal"></i> Comparar</button>
+            </div>
+
+            <!-- Imagens → PDF -->
+            <div class="card" id="imgPdfSection" style="display:none">
+                <h4 class="card-title"><i class="fas fa-image" style="color:#a78bfa"></i> Imagens → PDF</h4>
+                <p style="font-size:.85rem;color:rgba(255,255,255,.6);margin-bottom:15px">Converte JPG, PNG, BMP, TIFF e WEBP para um único PDF.</p>
+                <input type="file" id="imgFiles" accept=".jpg,.jpeg,.png,.bmp,.tiff,.tif,.webp" multiple style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px;width:100%;color:white;font-size:.85rem;margin-bottom:12px">
+                <div class="form-group"><label>Nome do PDF final</label><input type="text" id="imgNomeSaida" value="imagens_convertidas" placeholder="Nome do arquivo"></div>
+                <button class="btn btn-success" id="btnExecutarImgPdf"><i class="fas fa-image"></i> Converter</button>
+            </div>
+
+            <!-- Estatísticas -->
+            <div class="card">
+                <h4 class="card-title"><i class="fas fa-chart-bar"></i> Estatísticas</h4>
+                <div id="statsBlock" style="font-size:.85rem;color:rgba(255,255,255,.6)">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                        <div style="background:rgba(255,255,255,.05);padding:12px;border-radius:12px;text-align:center">
+                            <div id="statOps" style="font-size:1.6rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent">...</div>
+                            <div style="font-size:.72rem;color:rgba(255,255,255,.45)">Operações</div>
+                        </div>
+                        <div style="background:rgba(255,255,255,.05);padding:12px;border-radius:12px;text-align:center">
+                            <div id="statUsers" style="font-size:1.6rem;font-weight:800;color:#10b981">...</div>
+                            <div style="font-size:.72rem;color:rgba(255,255,255,.45)">Utilizadores</div>
+                        </div>
+                    </div>
+                    <div id="statTopOps" style="display:flex;flex-direction:column;gap:5px"></div>
+                </div>
             </div>
 
             <!-- Histórico -->
@@ -691,6 +944,11 @@
                         <span class="dep-status dep-miss" id="depPymupdf">Verificando...</span>
                     </div>
                     <div class="dep-cmd" id="depPymupdfCmd" style="display:none;padding:0 14px 10px">py -m pip install pymupdf</div>
+                    <div class="dep-row">
+                        <div class="dep-row-left"><i class="fas fa-circle" style="color:rgba(255,255,255,.2)"></i><span>tesseract + pytesseract</span></div>
+                        <span class="dep-status dep-miss" id="depOcr">Verificando...</span>
+                    </div>
+                    <div class="dep-cmd" id="depOcrCmd" style="display:none;padding:0 14px 10px">py -m pip install pytesseract Pillow</div>
                 </div>
             </div>
 
@@ -950,6 +1208,10 @@ async function checkDependencies() {
         else { rl.textContent = 'Faltando'; rl.className = 'dep-status dep-miss'; rlCmd.style.display = 'block'; }
         if (d.pymupdf) { pm.textContent = 'Instalado'; pm.className = 'dep-status dep-ok'; }
         else { pm.textContent = 'Faltando'; pm.className = 'dep-status dep-miss'; pmCmd.style.display = 'block'; }
+        const ocr = document.getElementById('depOcr');
+        const ocrCmd = document.getElementById('depOcrCmd');
+        if (d.ocr) { ocr.textContent = 'Instalado'; ocr.className = 'dep-status dep-ok'; }
+        else { ocr.textContent = 'Faltando'; ocr.className = 'dep-status dep-miss'; ocrCmd.style.display = 'block'; }
     } catch(e) {}
 }
 
@@ -1026,7 +1288,10 @@ document.querySelectorAll('.operation-btn').forEach(btn => {
             reordenar:'optReordenar', recortar_margens:'optRecortarMargens',
             marca_dagua:'optMarcaDagua', numeracao_paginas:'optNumeracaoPaginas',
             editar_metadados:'optEditarMetadados', proteger:'optProteger',
-            remover_senha:'optRemoverSenha', comprimir:'optComprimir'
+            remover_senha:'optRemoverSenha', comprimir:'optComprimir',
+            ocr:'optOcr', extrair_texto:'optExtrairTexto',
+            assinatura:'optAssinatura', carimbo:'optCarimbo',
+            extrair_formulario:'optExtrairFormulario'
         };
         if (map[currentOperation]) {
             const panel = document.getElementById(map[currentOperation]);
@@ -1056,6 +1321,22 @@ document.getElementById('btnExecutar').addEventListener('click', async () => {
         case 'remover_paginas':   payload.paginas = parsePages(document.getElementById('paginasRemover').value); break;
         case 'reordenar':         payload.nova_ordem = parsePages(document.getElementById('novaOrdem').value); break;
         case 'recortar_margens':  payload.margem_mm = +document.getElementById('margemMm').value; break;
+        case 'ocr':               payload.lang = document.getElementById('ocrLang').value; break;
+        case 'extrair_texto':     break;
+        case 'assinatura':
+            payload.texto    = document.getElementById('assTexto').value || 'Assinatura';
+            payload.posicao  = document.getElementById('assPosicao').value;
+            payload.tamanho  = +document.getElementById('assTamanho').value;
+            payload.cor      = document.getElementById('assCor').value;
+            payload.paginas  = parsePages(document.getElementById('assPaginas').value);
+            if (!payload.texto.trim()) { hideProgress(); showToast('Escreve o nome da assinatura', 'error'); return; }
+            break;
+        case 'carimbo':
+            payload.texto   = document.getElementById('carTexto').value || 'APROVADO';
+            payload.posicao = document.getElementById('carPosicao').value;
+            payload.cor     = document.getElementById('carCor').value;
+            break;
+        case 'extrair_formulario': break;
         case 'marca_dagua':       payload.texto = document.getElementById('wmTexto').value || 'CONFIDENCIAL'; payload.opacidade = document.getElementById('wmOpacidade').value / 100; payload.angulo = +document.getElementById('wmAngulo').value; break;
         case 'numeracao_paginas': payload.posicao = document.getElementById('numPosicao').value; payload.estilo = document.getElementById('numEstilo').value; break;
         case 'editar_metadados':  payload.titulo = document.getElementById('metaTitulo').value; payload.autor = document.getElementById('metaAutor').value; payload.assunto = document.getElementById('metaAssunto').value; payload.palavras_chave = document.getElementById('metaKeywords').value; break;
@@ -1377,6 +1658,158 @@ function showToast(msg, type='info') {
     clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => t.classList.remove('show'), 4000);
 }
+
+// ─── Comparar PDFs ────────────────────────────────────────────────────────────────
+document.getElementById('btnComparar').addEventListener('click', () => {
+    const s = document.getElementById('compararSection');
+    s.style.display = s.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('imgPdfSection').style.display = 'none';
+});
+document.getElementById('btnConverterImg').addEventListener('click', () => {
+    const s = document.getElementById('imgPdfSection');
+    s.style.display = s.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('compararSection').style.display = 'none';
+});
+
+document.getElementById('btnExecutarComparar').addEventListener('click', async () => {
+    const f1 = document.getElementById('compFile1').files[0];
+    const f2 = document.getElementById('compFile2').files[0];
+    if (!f1 || !f2) { showToast('Seleciona os dois PDFs', 'error'); return; }
+    showProgress('Comparando PDFs...', 'A analisar diferenças...');
+    const fd = new FormData();
+    fd.append('file1', f1); fd.append('file2', f2);
+    try {
+        const r = await fetch('/comparar', { method:'POST', body:fd });
+        const d = await r.json();
+        if (d.error) { showToast(d.error, 'error'); }
+        else {
+            currentSessionId = d.session_id;
+            showResults(d);
+            addHistory('comparar', f1.name + ' vs ' + f2.name);
+            showToast('Comparação concluída!', 'success');
+            document.getElementById('compararSection').style.display = 'none';
+        }
+    } catch(e) { showToast('Erro na comparação', 'error'); }
+    hideProgress();
+});
+
+// ─── Imagens → PDF ───────────────────────────────────────────────────────────────
+document.getElementById('btnExecutarImgPdf').addEventListener('click', async () => {
+    const files = document.getElementById('imgFiles').files;
+    if (!files.length) { showToast('Seleciona pelo menos uma imagem', 'error'); return; }
+    showProgress('Convertendo imagens...', 'A gerar PDF...');
+    const fd = new FormData();
+    Array.from(files).forEach(f => fd.append('files[]', f));
+    fd.append('nome_saida', document.getElementById('imgNomeSaida').value || 'imagens_convertidas');
+    try {
+        const r = await fetch('/converter_imagens', { method:'POST', body:fd });
+        const d = await r.json();
+        if (d.error) { showToast(d.error, 'error'); }
+        else {
+            currentSessionId = d.session_id;
+            showResults(d);
+            addHistory('imagens_para_pdf', `${files.length} imagem(ns)`);
+            showToast(`${files.length} imagem(ns) convertida(s)!`, 'success');
+            document.getElementById('imgPdfSection').style.display = 'none';
+        }
+    } catch(e) { showToast('Erro na conversão', 'error'); }
+    hideProgress();
+});
+
+// ─── Novas operações no switch do executar ────────────────────────────────────────
+const _origBtnExec = document.getElementById('btnExecutar');
+_origBtnExec.addEventListener('click', () => {}, true); // garante que o handler principal já existe
+// patch inline para as novas operações (inserido no switch existente via evento beforeclick)
+document.addEventListener('pdfExtraPayload', (e) => {
+    const { op, payload } = e.detail;
+    if (op === 'redimensionar')    payload.formato      = document.getElementById('redimFormato')?.value || 'A4';
+    if (op === 'cabecalho_rodape') { payload.cabecalho  = document.getElementById('cabTexto')?.value || ''; payload.rodape = document.getElementById('rodTexto')?.value || ''; }
+    if (op === 'qrcode')           { payload.url        = document.getElementById('qrUrl')?.value || 'https://example.com'; payload.posicao = document.getElementById('qrPosicao')?.value; payload.tamanho_mm = +(document.getElementById('qrTamanho')?.value || 25); }
+    if (op === 'paginas_branco')   payload.posicoes     = parsePages(document.getElementById('brancoPos')?.value || '');
+    if (op === 'ajustar_brilho')   payload.fator        = (+(document.getElementById('brilhoFator')?.value || 120)) / 100;
+});
+
+// ─── Mapa de painéis (adicionar novas entradas) ────────────────────────────────────────
+// Injetar no mapa de painéis existente (pós-carregamento)
+const _extraPanels = {
+    redimensionar:'optRedimensionar', cabecalho_rodape:'optCabecalhoRodape',
+    qrcode:'optQrcode', paginas_branco:'optPaginasBranco', ajustar_brilho:'optAjustarBrilho'
+};
+document.querySelectorAll('.operation-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const op = btn.dataset.op;
+        if (_extraPanels[op]) {
+            document.querySelectorAll('.options-panel').forEach(p => p.classList.remove('show'));
+            const panel = document.getElementById(_extraPanels[op]);
+            if (panel) {
+                panel.classList.add('show');
+                setTimeout(() => panel.scrollIntoView({ behavior:'smooth', block:'nearest' }), 60);
+            }
+        }
+        // payload extras
+        switch(op) {
+            case 'redimensionar':   break;
+            case 'cabecalho_rodape': break;
+            case 'qrcode':          break;
+            case 'paginas_branco':  break;
+            case 'ajustar_brilho':  break;
+        }
+    }, true); // capture phase para rodar antes
+});
+
+// Override do btnExecutar para novas operações
+const _origExecHandler = document.getElementById('btnExecutar').onclick;
+document.getElementById('btnExecutar').addEventListener('click', async () => {
+    if (!currentPdfInfo || !currentOperation) return;
+    const extras = {
+        redimensionar:   () => ({ formato:      document.getElementById('redimFormato')?.value }),
+        cabecalho_rodape:() => ({ cabecalho:    document.getElementById('cabTexto')?.value, rodape: document.getElementById('rodTexto')?.value }),
+        qrcode:          () => ({ url:          document.getElementById('qrUrl')?.value || 'https://example.com', posicao: document.getElementById('qrPosicao')?.value, tamanho_mm: +(document.getElementById('qrTamanho')?.value || 25) }),
+        paginas_branco:  () => ({ posicoes:     parsePages(document.getElementById('brancoPos')?.value || '') }),
+        ajustar_brilho:  () => ({ fator:        (+(document.getElementById('brilhoFator')?.value || 120)) / 100 }),
+    };
+    if (!extras[currentOperation]) return; // deixa o handler principal tratar
+    showProgress('Processando...', 'Aguarde...');
+    const payload = { operacao: currentOperation, filepath: currentPdfInfo.filepath, session_id: currentPdfInfo.session_id, ...extras[currentOperation]() };
+    try {
+        const r = await fetch('/processar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const d = await r.json();
+        if (d.error) { showToast(d.error, 'error'); }
+        else { currentSessionId = d.session_id; showResults(d); addHistory(currentOperation, currentPdfInfo.filename); showToast(TRANSLATIONS[currentLang].toastSuccess, 'success'); }
+    } catch(e) { showToast('Erro ao processar', 'error'); }
+    hideProgress();
+}, false);
+
+// ─── Estatísticas públicas ───────────────────────────────────────────────────────────────
+async function loadStats() {
+    try {
+        const r = await fetch('/stats');
+        const d = await r.json();
+        if (d.error) return;
+        document.getElementById('statOps').textContent   = d.total_operacoes.toLocaleString();
+        document.getElementById('statUsers').textContent = d.utilizadores_unicos.toLocaleString();
+        const shortLabels = {
+            dividir_partes:'Dividir', comprimir:'Comprimir', extrair_paginas:'Extrair Págs.',
+            mesclar:'Mesclar', proteger:'Proteger', marca_dagua:"Marca D'água",
+            rotacionar:'Rotar', remover_paginas:'Remover', reordenar:'Reordenar',
+            assinatura:'Assinatura', carimbo:'Carimbo', ocr:'OCR',
+            redimensionar:'Redimensionar', qrcode:'QR Code', ajustar_brilho:'Brilho'
+        };
+        const maxQ = d.top_operacoes[0]?.qtd || 1;
+        document.getElementById('statTopOps').innerHTML = d.top_operacoes.map(o => `
+            <div style="margin-bottom:5px">
+                <div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:2px">
+                    <span>${shortLabels[o.op] || o.op}</span>
+                    <span style="color:rgba(255,255,255,.4)">${o.qtd}</span>
+                </div>
+                <div style="background:rgba(255,255,255,.07);border-radius:4px;height:4px">
+                    <div style="height:100%;border-radius:4px;background:linear-gradient(90deg,#6366f1,#ec4899);width:${Math.round(o.qtd/maxQ*100)}%"></div>
+                </div>
+            </div>`).join('');
+    } catch(e) {}
+}
+loadStats();
+setInterval(loadStats, 60000);
 </script>
 </body>
 </html>

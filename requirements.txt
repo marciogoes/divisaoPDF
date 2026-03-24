@@ -5,3 +5,6 @@ gunicorn
 reportlab
 pymupdf
 requests
+pytesseract
+Pillow
+qrcode[pil]
