@@ -9,3 +9,4 @@ pytesseract
 Pillow
 qrcode[pil]
 docx2pdf
+gevent
