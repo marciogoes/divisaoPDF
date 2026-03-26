@@ -5,7 +5,7 @@
 
 from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-import os, shutil, base64, io, zipfile, uuid, sqlite3, threading
+import os, shutil, base64, io, zipfile, uuid, sqlite3, threading, re
 from datetime import datetime
 from PyPDF2 import PdfReader, PdfWriter, PdfMerger
 try:
@@ -15,7 +15,7 @@ except ImportError:
     REQUESTS_AVAILABLE = False
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -23,9 +23,7 @@ os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf'}
 
 # ─── Registo seguro de sessões (server-side) ─────────────────────────────────
-# Mapeia session_id -> caminho real do ficheiro no servidor
-# Assim o cliente NUNCA envia o filepath — apenas o session_id
-_SESSION_FILES = {}  # { session_id: filepath_absoluto }
+_SESSION_FILES = {}
 _SESSION_LOCK  = threading.Lock()
 
 def session_set(session_id, filepath):
@@ -33,7 +31,6 @@ def session_set(session_id, filepath):
         _SESSION_FILES[session_id] = os.path.abspath(filepath)
 
 def session_get(session_id):
-    """Devolve o filepath validado ou None se sessão inválida."""
     with _SESSION_LOCK:
         return _SESSION_FILES.get(session_id)
 
@@ -46,7 +43,6 @@ AUDIT_DB = 'auditoria.db'
 AUDIT_PASSWORD = os.environ.get('AUDIT_PASSWORD', 'admin123')
 
 def get_db():
-    """Ligação SQLite thread-safe"""
     conn = sqlite3.connect(AUDIT_DB, check_same_thread=False)
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA synchronous=NORMAL')
@@ -58,7 +54,6 @@ def init_audit_db():
         CREATE TABLE IF NOT EXISTS acessos (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             ts               TEXT NOT NULL,
-            -- Rede / IP
             ip               TEXT,
             pais             TEXT,
             pais_code        TEXT,
@@ -74,7 +69,6 @@ def init_audit_db():
             proxy            INTEGER DEFAULT 0,
             vpn              INTEGER DEFAULT 0,
             hosting          INTEGER DEFAULT 0,
-            -- Browser / OS (User-Agent)
             user_agent       TEXT,
             browser          TEXT,
             browser_version  TEXT,
@@ -83,7 +77,6 @@ def init_audit_db():
             os_version       TEXT,
             device_type      TEXT,
             is_bot           INTEGER DEFAULT 0,
-            -- Cliente (JavaScript)
             screen_res       TEXT,
             viewport         TEXT,
             color_depth      INTEGER,
@@ -92,7 +85,6 @@ def init_audit_db():
             referrer         TEXT,
             touch_support    INTEGER DEFAULT 0,
             connection_type  TEXT,
-            -- App
             rota             TEXT,
             metodo           TEXT,
             operacao         TEXT,
@@ -100,7 +92,6 @@ def init_audit_db():
             status           INTEGER
         )
     ''')
-    # migrar colunas antigas se necessario
     cols_needed = [
         ('pais_code','TEXT'), ('zip_geo','TEXT'), ('timezone_geo','TEXT'),
         ('org','TEXT'), ('asn','TEXT'), ('proxy','INTEGER'),
@@ -128,12 +119,10 @@ def get_real_ip():
     return request.remote_addr
 
 def parse_ua(ua_str):
-    """Parse simples de User-Agent sem dependências externas."""
     ua = ua_str or ''
     result = {'browser':'Desconhecido','browser_version':'','browser_engine':'',
               'os_name':'Desconhecido','os_version':'','device_type':'Desktop','is_bot':0}
     ul = ua.lower()
-    # Bot detection
     bots = ['bot','crawl','spider','slurp','mediapartners','adsbot','facebookexternalhit',
             'twitterbot','linkedinbot','whatsapp','telegram','pinterest','slack','discord']
     if any(b in ul for b in bots):
@@ -141,13 +130,10 @@ def parse_ua(ua_str):
         result['device_type'] = 'Bot'
         result['browser'] = 'Bot'
         return result
-    # Device
     if any(x in ul for x in ['mobile','android','iphone','ipod','blackberry','windows phone']):
         result['device_type'] = 'Mobile'
     elif any(x in ul for x in ['ipad','tablet']):
         result['device_type'] = 'Tablet'
-    # Browser + engine
-    import re
     def _v(pattern):
         m = re.search(pattern, ua, re.I)
         return m.group(1) if m else ''
@@ -165,7 +151,6 @@ def parse_ua(ua_str):
         result['browser'] = 'Internet Explorer'; result['browser_version'] = _v(r'(?:MSIE |rv:)([\d.]+)'); result['browser_engine'] = 'Trident'
     elif 'SamsungBrowser/' in ua:
         result['browser'] = 'Samsung Browser'; result['browser_version'] = _v(r'SamsungBrowser/([\d.]+)'); result['browser_engine'] = 'Blink'
-    # OS
     if 'Windows NT' in ua:
         result['os_name'] = 'Windows'
         nt_map = {'10.0':'10/11','6.3':'8.1','6.2':'8','6.1':'7','6.0':'Vista','5.1':'XP'}
@@ -184,12 +169,11 @@ def parse_ua(ua_str):
     return result
 
 def geo_lookup_async(ip, row_id):
-    """Busca geo + rede completa via ip-api em background."""
     if not REQUESTS_AVAILABLE or ip in ('127.0.0.1', '::1', 'localhost', ''):
         return
     try:
         fields = 'status,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,proxy,hosting'
-        r = req_lib.get(f'http://ip-api.com/json/{ip}?fields={fields}', timeout=5)
+        r = req_lib.get(f'https://ip-api.com/json/{ip}?fields={fields}', timeout=5)
         d = r.json()
         if d.get('status') == 'success':
             asn_raw = d.get('as', '')
@@ -210,7 +194,6 @@ def geo_lookup_async(ip, row_id):
         pass
 
 def log_access(operacao=None, filename=None, status=200, client_data=None):
-    """Regista acesso com dados de browser, OS e cliente."""
     ip = get_real_ip()
     ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     ua_str = request.headers.get('User-Agent', '')[:300]
@@ -252,7 +235,6 @@ except ImportError:
 try:
     import pytesseract
     from PIL import Image as PILImage
-    # Caminho padrão no Windows — ignora se não existir
     _tess_paths = [
         r'C:\Program Files\Tesseract-OCR\tesseract.exe',
         r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
@@ -477,7 +459,7 @@ def remover_senha_pdf(caminho_pdf, senha_atual, pasta_saida):
     reader = PdfReader(caminho_pdf)
     if reader.is_encrypted:
         result = reader.decrypt(senha_atual)
-        if not result:
+        if result == 0:
             raise ValueError("Senha incorreta ou formato não suportado")
     w = PdfWriter()
     nome_base = os.path.splitext(os.path.basename(caminho_pdf))[0]
@@ -610,7 +592,6 @@ def dividir_por_marcadores_pdf(caminho_pdf, pasta_saida):
     if not caps:
         raise ValueError("Não foi possível processar os marcadores")
     caps.sort(key=lambda x: x['pagina'])
-    # Remove duplicates
     caps = [c for i, c in enumerate(caps) if i == 0 or c['pagina'] != caps[i-1]['pagina']]
     arquivos = []
     for i, cap in enumerate(caps):
@@ -638,7 +619,6 @@ def dividir_por_marcadores_pdf(caminho_pdf, pasta_saida):
 
 # ─── Novas Funcionalidades Avançadas ────────────────────────────────────────
 
-# ── 1. Converter Imagens → PDF ──────────────────────────────────────────────
 def imagens_para_pdf(caminhos, pasta_saida, nome_saida):
     """Converte imagens (JPG/PNG/BMP/TIFF/WEBP) para PDF"""
     if not PIL_AVAILABLE:
@@ -655,7 +635,6 @@ def imagens_para_pdf(caminhos, pasta_saida, nome_saida):
     total = len(imgs)
     return [{'nome': nome, 'paginas': total, 'imagens_convertidas': total}], total
 
-# ── 2. Redimensionar Páginas ─────────────────────────────────────────────────
 def redimensionar_paginas(caminho_pdf, formato_destino, pasta_saida):
     """Redimensiona todas as páginas para um formato padrão (A4, A3, Letter...)"""
     formatos = {
@@ -675,23 +654,21 @@ def redimensionar_paginas(caminho_pdf, formato_destino, pasta_saida):
     for page in reader.pages:
         larg_orig = float(page.mediabox.width)
         alt_orig  = float(page.mediabox.height)
-        # detectar orientação
-        if larg_orig > alt_orig:  # paisagem
+        if larg_orig > alt_orig:
             lw, lh = alt_dest, larg_dest
         else:
             lw, lh = larg_dest, alt_dest
         page.mediabox.lower_left  = (0, 0)
         page.mediabox.upper_right = (lw, lh)
-        # escalar conteúdo
         sx = lw / larg_orig
         sy = lh / alt_orig
-        page.add_transformation([sx, 0, 0, sy, 0, 0])
+        from PyPDF2.generic import Transformation
+        page.add_transformation(Transformation().scale(sx, sy))
         w.add_page(page)
     nome = f'{nome_base}_{formato_destino.lower()}.pdf'
     with open(os.path.join(pasta_saida, nome), 'wb') as f: w.write(f)
     return [{'nome': nome, 'paginas': total, 'formato': formato_destino}], total
 
-# ── 3. Cabeçalho / Rodapé de Texto ──────────────────────────────────────────
 def adicionar_cabecalho_rodape(caminho_pdf, texto_cab, texto_rod, pasta_saida):
     """Adiciona cabeçalho e/ou rodapé de texto em todas as páginas"""
     if not REPORTLAB_AVAILABLE:
@@ -726,7 +703,6 @@ def adicionar_cabecalho_rodape(caminho_pdf, texto_cab, texto_rod, pasta_saida):
     with open(os.path.join(pasta_saida, nome), 'wb') as f: w.write(f)
     return [{'nome': nome, 'paginas': total}], total
 
-# ── 4. Comparar dois PDFs ────────────────────────────────────────────────────
 def comparar_pdfs(caminho1, caminho2, pasta_saida):
     """Compara texto de dois PDFs e gera relatório de diferenças"""
     import difflib
@@ -755,7 +731,7 @@ def comparar_pdfs(caminho1, caminho2, pasta_saida):
         diff = list(difflib.unified_diff(
             t1.splitlines(), t2.splitlines(),
             fromfile=f'A/pág.{i+1}', tofile=f'B/pág.{i+1}', lineterm=''))
-        linhas.extend(diff[:60])  # max 60 linhas de diff por página
+        linhas.extend(diff[:60])
         if len(diff) > 60:
             linhas.append(f'  ... (+{len(diff)-60} linhas omitidas)')
         diferencas_total += 1
@@ -768,7 +744,6 @@ def comparar_pdfs(caminho1, caminho2, pasta_saida):
     return [{'nome': nome_txt, 'paginas': max_pags, 'tipo': 'texto',
              'diferencas': diferencas_total}], max_pags
 
-# ── 5. QR Code em páginas ────────────────────────────────────────────────────
 def adicionar_qrcode(caminho_pdf, url, posicao, tamanho_mm, pasta_saida):
     """Adiciona QR Code em todas as páginas do PDF"""
     if not QRCODE_AVAILABLE:
@@ -780,14 +755,13 @@ def adicionar_qrcode(caminho_pdf, url, posicao, tamanho_mm, pasta_saida):
     w = PdfWriter()
     total = len(reader.pages)
     nome_base = os.path.splitext(os.path.basename(caminho_pdf))[0]
-    # gerar QR
     qr = qrcode.QRCode(version=1, box_size=10, border=2)
     qr.add_data(url)
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color='black', back_color='white')
     qr_buf = io.BytesIO()
     qr_img.save(qr_buf, format='PNG')
-    tam_pt = tamanho_mm * 72 / 25.4  # mm → pontos
+    tam_pt = tamanho_mm * 72 / 25.4
     for page in reader.pages:
         mb = page.mediabox
         larg, alt = float(mb.width), float(mb.height)
@@ -810,7 +784,6 @@ def adicionar_qrcode(caminho_pdf, url, posicao, tamanho_mm, pasta_saida):
     with open(os.path.join(pasta_saida, nome), 'wb') as f: w.write(f)
     return [{'nome': nome, 'paginas': total, 'url': url}], total
 
-# ── 6. Inserir Páginas em Branco ─────────────────────────────────────────────
 def inserir_paginas_branco(caminho_pdf, posicoes, pasta_saida):
     """Insere páginas em branco nas posições especificadas"""
     reader = PdfReader(caminho_pdf)
@@ -818,19 +791,16 @@ def inserir_paginas_branco(caminho_pdf, posicoes, pasta_saida):
     total_orig = len(reader.pages)
     nome_base = os.path.splitext(os.path.basename(caminho_pdf))[0]
     posicoes_set = sorted(set(posicoes))
-    # pegar dimensão da primeira página
     p0 = reader.pages[0].mediabox
     larg, alt = float(p0.width), float(p0.height)
     inseridas = 0
-    pg_idx = 0  # índice na lista de posições
+    pg_idx = 0
     for i in range(1, total_orig + 1):
-        # inserir antes desta página?
         while pg_idx < len(posicoes_set) and posicoes_set[pg_idx] == i:
             w.add_blank_page(width=larg, height=alt)
             inseridas += 1
             pg_idx += 1
         w.add_page(reader.pages[i - 1])
-    # inserir no final?
     while pg_idx < len(posicoes_set):
         w.add_blank_page(width=larg, height=alt)
         inseridas += 1
@@ -840,7 +810,6 @@ def inserir_paginas_branco(caminho_pdf, posicoes, pasta_saida):
     return [{'nome': nome, 'paginas': total_orig + inseridas,
              'paginas_inseridas': inseridas}], total_orig
 
-# ── 7. Ajustar Brilho (Escurecer/Clarear) ────────────────────────────────────
 def ajustar_brilho_pdf(caminho_pdf, fator, pasta_saida):
     """Ajusta brilho de PDFs digitalizados (fator: 0.5=escuro, 1.5=claro)"""
     if not PYMUPDF_AVAILABLE:
@@ -866,7 +835,9 @@ def ajustar_brilho_pdf(caminho_pdf, fator, pasta_saida):
     cs = os.path.join(pasta_saida, nome)
     doc_saida.save(cs)
     doc.close(); doc_saida.close()
-    total = fitz.open(cs).page_count
+    _tmp = fitz.open(cs)
+    total = _tmp.page_count
+    _tmp.close()
     return [{'nome': nome, 'paginas': total, 'fator_brilho': fator}], total
 
 def ocr_pdf(caminho_pdf, lang, pasta_saida):
@@ -881,9 +852,9 @@ def ocr_pdf(caminho_pdf, lang, pasta_saida):
     idiomas = {'pt': 'por', 'en': 'eng', 'es': 'spa', 'fr': 'fra', 'auto': 'por+eng'}
     tess_lang = idiomas.get(lang, 'por+eng')
     for i, page in enumerate(doc):
-        mat = fitz.Matrix(2.0, 2.0)  # 144 DPI
+        mat = fitz.Matrix(2.0, 2.0)
         pix = page.get_pixmap(matrix=mat)
-        img = Image.frombytes('RGB', [pix.width, pix.height], pix.samples)
+        img = PILImage.frombytes('RGB', [pix.width, pix.height], pix.samples)
         pdf_bytes = pytesseract.image_to_pdf_or_hocr(img, extension='pdf', lang=tess_lang)
         tmp_doc = fitz.open('pdf', pdf_bytes)
         doc_saida.insert_pdf(tmp_doc)
@@ -892,13 +863,18 @@ def ocr_pdf(caminho_pdf, lang, pasta_saida):
     caminho_saida = os.path.join(pasta_saida, nome)
     doc_saida.save(caminho_saida)
     doc.close(); doc_saida.close()
-    return [{'nome': nome, 'paginas': len(doc_saida := fitz.open(caminho_saida))}], fitz.open(caminho_saida).page_count
+    _tmp = fitz.open(caminho_saida)
+    total_pags = _tmp.page_count
+    _tmp.close()
+    return [{'nome': nome, 'paginas': total_pags}], total_pags
 
 def extrair_texto_pdf(caminho_pdf, pasta_saida):
     """Extrai todo o texto do PDF para ficheiro .txt"""
     nome_base = os.path.splitext(os.path.basename(caminho_pdf))[0]
+    total_pags = 0
     if PYMUPDF_AVAILABLE:
         doc = fitz.open(caminho_pdf)
+        total_pags = len(doc)
         linhas = []
         for i, page in enumerate(doc):
             txt = page.get_text('text').strip()
@@ -908,6 +884,7 @@ def extrair_texto_pdf(caminho_pdf, pasta_saida):
         texto = '\n\n'.join(linhas) if linhas else '(Nenhum texto encontrado — tente OCR)'
     else:
         reader = PdfReader(caminho_pdf)
+        total_pags = len(reader.pages)
         linhas = []
         for i, page in enumerate(reader.pages):
             txt = (page.extract_text() or '').strip()
@@ -918,9 +895,8 @@ def extrair_texto_pdf(caminho_pdf, pasta_saida):
     with open(os.path.join(pasta_saida, nome), 'w', encoding='utf-8') as f:
         f.write(texto)
     total_chars = len(texto)
-    reader2 = PdfReader(caminho_pdf)
-    return [{'nome': nome, 'paginas': len(reader2.pages), 'tipo': 'texto',
-             'caracteres': total_chars, 'palavras': len(texto.split())}], len(reader2.pages)
+    return [{'nome': nome, 'paginas': total_pags, 'tipo': 'texto',
+             'caracteres': total_chars, 'palavras': len(texto.split())}], total_pags
 
 def adicionar_assinatura(caminho_pdf, texto_assinatura, paginas, posicao, tamanho, cor_hex, pasta_saida):
     """Adiciona assinatura visual (texto estilizado) ao PDF"""
@@ -931,7 +907,6 @@ def adicionar_assinatura(caminho_pdf, texto_assinatura, paginas, posicao, tamanh
     total = len(reader.pages)
     nome_base = os.path.splitext(os.path.basename(caminho_pdf))[0]
     pgs = set(paginas) if paginas else set(range(1, total + 1))
-    # converter hex para RGB
     cor_hex = cor_hex.lstrip('#')
     r_cor = int(cor_hex[0:2], 16) / 255
     g_cor = int(cor_hex[2:4], 16) / 255
@@ -954,7 +929,6 @@ def adicionar_assinatura(caminho_pdf, texto_assinatura, paginas, posicao, tamanh
             x, y = fn(larg, alt)
             c.setFillColorRGB(r_cor, g_cor, b_cor)
             c.setFont('Helvetica-BoldOblique', int(tamanho))
-            # linha decorativa
             c.setStrokeColorRGB(r_cor, g_cor, b_cor)
             c.setLineWidth(1)
             txt_w = c.stringWidth(texto_assinatura, 'Helvetica-BoldOblique', int(tamanho))
@@ -967,7 +941,6 @@ def adicionar_assinatura(caminho_pdf, texto_assinatura, paginas, posicao, tamanh
             else:
                 c.drawString(x, y + 4, texto_assinatura)
                 c.line(x, y + 2, x + txt_w + 5, y + 2)
-            # data
             c.setFont('Helvetica', 7)
             data_str = datetime.now().strftime('%d/%m/%Y %H:%M')
             if 'right' in posicao:
@@ -998,7 +971,6 @@ def adicionar_carimbo(caminho_pdf, texto, posicao, cor_hex, pasta_saida):
         larg, alt = float(mb.width), float(mb.height)
         packet = io.BytesIO()
         c = rl_canvas.Canvas(packet, pagesize=(larg, alt))
-        # caixa de carimbo
         font_size = min(larg, alt) * 0.07
         txt_w = len(texto) * font_size * 0.55
         txt_h = font_size * 1.4
@@ -1010,14 +982,11 @@ def adicionar_carimbo(caminho_pdf, texto, posicao, cor_hex, pasta_saida):
             'bottom-left':  (20, 20),
         }
         x, y = pos_map.get(posicao, pos_map['top-right'])
-        # fundo
         c.setFillColorRGB(r_c, g_c, b_c, 0.08)
         c.roundRect(x - 6, y - 4, txt_w + 12, txt_h + 4, 4, fill=1, stroke=0)
-        # borda
         c.setStrokeColorRGB(r_c, g_c, b_c, 0.7)
         c.setLineWidth(2)
         c.roundRect(x - 6, y - 4, txt_w + 12, txt_h + 4, 4, fill=0, stroke=1)
-        # texto
         c.setFillColorRGB(r_c, g_c, b_c)
         c.setFont('Helvetica-Bold', font_size)
         c.drawString(x, y + font_size * 0.2, texto)
@@ -1088,7 +1057,6 @@ def telemetria():
         ip = get_real_ip()
         ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         conn = get_db()
-        # Actualizar o registo mais recente deste IP (da visita /)
         row = conn.execute(
             'SELECT id FROM acessos WHERE ip=? ORDER BY id DESC LIMIT 1', (ip,)
         ).fetchone()
@@ -1127,10 +1095,8 @@ def get_info():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{session_id}_{filename}")
         file.save(filepath)
         info = get_pdf_info(filepath)
-        # Guardar filepath no servidor — cliente recebe apenas session_id
         session_set(session_id, filepath)
         info.update({'session_id': session_id, 'filename': filename})
-        # NUNCA devolver o filepath real ao cliente
         log_access(operacao='upload', filename=filename)
         return jsonify(info)
     except Exception as e:
@@ -1156,8 +1122,9 @@ def preview_pages_route():
                 'page': i + 1,
                 'image': 'data:image/png;base64,' + base64.b64encode(pix.tobytes('png')).decode()
             })
+        total = len(doc)
         doc.close()
-        return jsonify({'pages': pages, 'total': len(doc)})
+        return jsonify({'pages': pages, 'total': total})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1166,14 +1133,12 @@ def processar():
     data = request.json
     operacao = data.get('operacao')
     session_id = data.get('session_id')
-    # filepath vem do servidor — NUNCA do cliente
     filepath = session_get(session_id)
     if not filepath or not os.path.exists(filepath):
         return jsonify({'error': 'Sessão expirada. Faça o upload novamente.'}), 400
     try:
         pasta = os.path.join(app.config['OUTPUT_FOLDER'], session_id)
         os.makedirs(pasta, exist_ok=True)
-        # ── Operações existentes ──────────────────────────────────────────────
         if operacao == 'dividir_partes':
             arquivos, total = dividir_por_partes(filepath, int(data.get('num_partes', 2)), pasta)
         elif operacao == 'dividir_paginas':
@@ -1195,7 +1160,6 @@ def processar():
             arquivos, total = adicionar_senha(filepath, senha, pasta)
         elif operacao == 'comprimir':
             arquivos, total = comprimir_pdf(filepath, pasta)
-        # ── Novas operações ───────────────────────────────────────────────────
         elif operacao == 'remover_senha':
             arquivos, total = remover_senha_pdf(filepath, data.get('senha', ''), pasta)
         elif operacao == 'marca_dagua':
@@ -1289,11 +1253,15 @@ def mesclar():
 
 @app.route('/download/<session_id>/<filename>')
 def download_file(session_id, filename):
+    if not re.match(r'^[a-f0-9]{8}$', session_id):
+        return jsonify({'error': 'Sessão inválida'}), 400
     return send_from_directory(
         os.path.join(app.config['OUTPUT_FOLDER'], session_id), filename, as_attachment=True)
 
 @app.route('/download_all/<session_id>')
 def download_all(session_id):
+    if not re.match(r'^[a-f0-9]{8}$', session_id):
+        return jsonify({'error': 'Sessão inválida'}), 400
     pasta = os.path.join(app.config['OUTPUT_FOLDER'], session_id)
     mem = io.BytesIO()
     with zipfile.ZipFile(mem, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -1405,7 +1373,6 @@ def auditoria_dados():
     rows = conn.execute(
         'SELECT * FROM acessos ORDER BY id DESC LIMIT ? OFFSET ?', (per, offset)
     ).fetchall()
-    # Stats
     stats = {}
     stats['total'] = total
     stats['hoje'] = conn.execute(
@@ -1452,16 +1419,28 @@ def auditoria_export():
     conn = get_db()
     rows = conn.execute('SELECT * FROM acessos ORDER BY id DESC').fetchall()
     conn.close()
-    lines = ['id,ts,ip,pais,regiao,cidade,lat,lon,isp,rota,metodo,operacao,filename,status,user_agent']
+    import csv as csv_mod
+    buf = io.StringIO()
+    writer = csv_mod.writer(buf)
+    writer.writerow(['id','ts','ip','pais','pais_code','regiao','cidade','zip_geo','lat','lon',
+                     'timezone_geo','isp','org','asn','proxy','vpn','hosting','user_agent',
+                     'browser','browser_version','browser_engine','os_name','os_version',
+                     'device_type','is_bot','screen_res','viewport','color_depth','lang_browser',
+                     'timezone_browser','referrer','touch_support','connection_type',
+                     'rota','metodo','operacao','filename','status'])
     for r in rows:
-        lines.append(','.join(f'"{v}"' if v else '""' for v in r))
-    csv = '\n'.join(lines)
+        writer.writerow([v if v is not None else '' for v in r])
+    csv_data = buf.getvalue()
     return send_file(
-        io.BytesIO(csv.encode('utf-8')),
+        io.BytesIO(csv_data.encode('utf-8')),
         mimetype='text/csv',
         as_attachment=True,
         download_name='auditoria_acessos.csv'
     )
+
+@app.errorhandler(413)
+def request_entity_too_large(e):
+    return jsonify({'error': 'Arquivo muito grande. Limite: 500 MB'}), 413
 
 if __name__ == '__main__':
     print(f"\n{'='*65}")
