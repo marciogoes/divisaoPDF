@@ -332,6 +332,8 @@ def get_pdf_info(filepath):
 def dividir_por_partes(caminho_pdf, num_partes, pasta_saida):
     reader = PdfReader(caminho_pdf)
     total = len(reader.pages)
+    if num_partes > total:
+        raise ValueError(f'Não é possível dividir em {num_partes} partes: o PDF só tem {total} página(s). Máximo possível: {total} parte(s).')
     num_partes = max(2, min(num_partes, total))
     ppp = total // num_partes
     extras = total % num_partes

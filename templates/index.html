@@ -1384,6 +1384,19 @@ function renderPdfInfo(d) {
     document.getElementById('pdfName').textContent = d.filename;
     document.getElementById('pdfPages').textContent = d.total_paginas;
     document.getElementById('pdfSize').textContent = d.tamanho_mb + ' MB';
+    // Ajusta limites dinâmicos baseados no total de páginas
+    const totalPags = d.total_paginas;
+    const inpPartes = document.getElementById('numPartes');
+    if (inpPartes) {
+        inpPartes.max = totalPags;
+        inpPartes.title = `Máximo: ${totalPags} parte(s) — número de páginas do PDF`;
+        const hintPartes = inpPartes.nextElementSibling;
+        if (hintPartes && hintPartes.classList.contains('form-hint')) {
+            hintPartes.textContent = `O PDF será dividido em partes iguais (máx. ${totalPags} parte${totalPags > 1 ? 's' : ''})`;
+        }
+    }
+    const inpPagParte = document.getElementById('paginasPorParte');
+    if (inpPagParte) inpPagParte.max = totalPags;
     if (d.tem_marcadores) {
         document.getElementById('pdfBookmarkItem').style.display = '';
         document.getElementById('pdfBookmarks').textContent = d.qtd_marcadores;
@@ -1451,7 +1464,17 @@ document.getElementById('btnExecutar').addEventListener('click', async () => {
     showProgress('Processando PDF...', 'Aguarde um momento');
     const payload = { operacao:currentOperation, session_id:currentPdfInfo.session_id };
     switch (currentOperation) {
-        case 'dividir_partes':    payload.num_partes = +document.getElementById('numPartes').value || 2; break;
+        case 'dividir_partes': {
+            const np = +document.getElementById('numPartes').value || 2;
+            const maxP = currentPdfInfo.total_paginas || 9999;
+            if (np > maxP) {
+                hideProgress();
+                showToast(`Este PDF tem ${maxP} página(s) — não é possível dividir em ${np} partes. Máximo: ${maxP}.`, 'error');
+                return;
+            }
+            payload.num_partes = np;
+            break;
+        }
         case 'dividir_paginas':   payload.paginas_por_parte = +document.getElementById('paginasPorParte').value || 10; break;
         case 'extrair_paginas':   payload.paginas = parsePages(document.getElementById('paginasExtrair').value); break;
         case 'extrair_intervalo': payload.inicio = +document.getElementById('paginaInicio').value; payload.fim = +document.getElementById('paginaFim').value; break;
