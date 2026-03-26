@@ -806,7 +806,10 @@
 
                 <div class="options-panel" id="optComprimir">
                     <div class="options-title">⚙️ Comprimir PDF</div>
-                    <div class="info-box"><i class="fas fa-info-circle"></i> O PDF será comprimido removendo dados redundantes dos fluxos de conteúdo. A taxa de compressão varia — PDFs com muitas imagens tendem a obter melhor redução de tamanho.</div>
+                    <div class="info-box" id="comprimir-info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <span id="comprimir-info-text">Verificando método disponível...</span>
+                    </div>
                 </div>
 
                 <!-- Execute Button -->
@@ -1347,6 +1350,18 @@ async function checkDependencies() {
         else { rl.textContent = 'Faltando'; rl.className = 'dep-status dep-miss'; rlCmd.style.display = 'block'; }
         if (d.pymupdf) { pm.textContent = 'Instalado'; pm.className = 'dep-status dep-ok'; }
         else { pm.textContent = 'Faltando'; pm.className = 'dep-status dep-miss'; pmCmd.style.display = 'block'; }
+        // Atualiza painel de compressao com base no metodo disponivel
+        const comprInfo = document.getElementById('comprimir-info-text');
+        const comprBox = document.getElementById('comprimir-info-box');
+        if (comprInfo && comprBox) {
+            if (d.pymupdf) {
+                comprBox.className = 'info-box';
+                comprInfo.innerHTML = '<strong>Modo completo (pymupdf)</strong> — comprime texto, vetores, imagens e fontes. Redução típica de 20–70% em PDFs com imagens.';
+            } else {
+                comprBox.className = 'warn-box';
+                comprInfo.innerHTML = '<strong>Modo parcial (PyPDF2)</strong> — comprime apenas texto e vetores, <u>imagens não são comprimidas</u>. Para compressão completa instale: <code style="background:rgba(255,255,255,.1);padding:1px 6px;border-radius:4px">py -m pip install pymupdf</code>';
+            }
+        }
         const ocr = document.getElementById('depOcr');
         const ocrCmd = document.getElementById('depOcrCmd');
         if (d.ocr) { ocr.textContent = 'Instalado'; ocr.className = 'dep-status dep-ok'; }

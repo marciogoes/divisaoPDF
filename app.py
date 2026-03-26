@@ -42,6 +42,9 @@ def session_delete(session_id):
 # ─── Auditoria (SQLite) ───────────────────────────────────────────────────────
 AUDIT_DB = 'auditoria.db'
 AUDIT_PASSWORD = os.environ.get('AUDIT_PASSWORD', 'admin123')
+if AUDIT_PASSWORD == 'admin123':
+    import warnings as _w
+    _w.warn('\n\u26a0\ufe0f  AVISO DE SEGURANCA: Senha de auditoria no padrao admin123. Defina AUDIT_PASSWORD no Railway!', stacklevel=2)
 
 def get_db():
     conn = sqlite3.connect(AUDIT_DB, check_same_thread=False)
@@ -132,6 +135,46 @@ def _cleanup_old_files():
                 except Exception:
                     pass
 threading.Thread(target=_cleanup_old_files, daemon=True).start()
+
+
+# ─── Rate Limiting (por IP, em memória) ────────────────────────────────────────────────────────────────────
+import time as _rl_time
+_RATE_LIMITS = {}
+_RATE_LOCK   = threading.Lock()
+
+def _check_rate_limit(ip, endpoint, max_calls=30, window=60):
+    now = _rl_time.time()
+    key = f"{ip}:{endpoint}"
+    with _RATE_LOCK:
+        calls, window_start = _RATE_LIMITS.get(key, (0, now))
+        if now - window_start > window:
+            calls, window_start = 0, now
+        calls += 1
+        _RATE_LIMITS[key] = (calls, window_start)
+        if len(_RATE_LIMITS) > 1000:
+            cutoff = now - window * 2
+            for k in [k for k,(c,ws) in _RATE_LIMITS.items() if ws < cutoff]:
+                del _RATE_LIMITS[k]
+        return calls <= max_calls
+
+def _check_audit_brute(ip, max_fails=5, window=300):
+    now = _rl_time.time()
+    key = f"{ip}:af"
+    with _RATE_LOCK:
+        calls, ws = _RATE_LIMITS.get(key, (0, now))
+        if now - ws > window: return True
+        return calls < max_fails
+
+def _record_audit_fail(ip):
+    now = _rl_time.time()
+    key = f"{ip}:af"
+    with _RATE_LOCK:
+        calls, ws = _RATE_LIMITS.get(key, (0, now))
+        if now - ws > 300: calls, ws = 0, now
+        _RATE_LIMITS[key] = (calls + 1, ws)
+
+def _clear_audit_fail(ip):
+    with _RATE_LOCK: _RATE_LIMITS.pop(f"{ip}:af", None)
 
 
 def get_real_ip():
@@ -460,22 +503,45 @@ def adicionar_senha(caminho_pdf, senha, pasta_saida):
     return [{'nome': nome, 'paginas': len(reader.pages), 'protegido': True}], len(reader.pages)
 
 def comprimir_pdf(caminho_pdf, pasta_saida):
-    reader = PdfReader(caminho_pdf)
-    w = PdfWriter()
     nome_base = os.path.splitext(os.path.basename(caminho_pdf))[0]
-    for page in reader.pages:
-        page.compress_content_streams()
-        w.add_page(page)
     nome = f"{nome_base}_comprimido.pdf"
     cs = os.path.join(pasta_saida, nome)
-    with open(cs, 'wb') as f: w.write(f)
-    to = os.path.getsize(caminho_pdf); tn = os.path.getsize(cs)
+    to = os.path.getsize(caminho_pdf)
+
+    if PYMUPDF_AVAILABLE:
+        # Melhor compressao: pymupdf com garbage collection + deflate de imagens/fontes
+        doc = fitz.open(caminho_pdf)
+        total_pags = len(doc)
+        doc.save(
+            cs,
+            garbage=4,           # remove objetos orfaos e compacta xref
+            deflate=True,        # comprime todos os streams de conteudo
+            deflate_images=True, # comprime imagens embutidas
+            deflate_fonts=True,  # comprime fontes embutidas
+            clean=True,          # limpa e normaliza estrutura interna
+        )
+        doc.close()
+    else:
+        # Fallback: PyPDF2 (comprime apenas streams de texto/vetor, nao imagens)
+        reader = PdfReader(caminho_pdf)
+        w = PdfWriter()
+        total_pags = len(reader.pages)
+        for page in reader.pages:
+            page.compress_content_streams()
+            w.add_page(page)
+        with open(cs, 'wb') as f:
+            w.write(f)
+
+    tn = os.path.getsize(cs)
+    metodo = 'pymupdf (completo)' if PYMUPDF_AVAILABLE else 'pypdf2 (parcial — instale pymupdf para melhor compressao)'
     return [{
-        'nome': nome, 'paginas': len(reader.pages),
+        'nome': nome,
+        'paginas': total_pags,
         'tamanho_original_mb': round(to / 1024 / 1024, 2),
         'tamanho_novo_mb': round(tn / 1024 / 1024, 2),
-        'reducao_percentual': round((1 - tn / to) * 100, 1) if to > 0 else 0
-    }], len(reader.pages)
+        'reducao_percentual': round((1 - tn / to) * 100, 1) if to > 0 else 0,
+        'metodo': metodo,
+    }], total_pags
 
 # ─── Novas Funções ────────────────────────────────────────────────────────────
 
@@ -1066,6 +1132,18 @@ def recortar_margens_pdf(caminho_pdf, margem_mm, pasta_saida):
     with open(os.path.join(pasta_saida, nome), 'wb') as f: w.write(f)
     return [{'nome': nome, 'paginas': total, 'margem_removida_mm': margem_mm}], total
 
+# ─── HTTP Security Headers ────────────────────────────────────────────────────
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    if request.is_secure:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
+
 # ─── Rotas ────────────────────────────────────────────────────────────────────
 
 @app.before_request
@@ -1108,6 +1186,9 @@ def check_deps():
 
 @app.route('/info', methods=['POST'])
 def get_info():
+    ip = get_real_ip()
+    if not _check_rate_limit(ip, 'upload', max_calls=20, window=60):
+        return jsonify({'error': 'Muitas requisicoes. Aguarde um momento.'}), 429
     if 'file' not in request.files:
         return jsonify({'error': 'Nenhum arquivo enviado'}), 400
     file = request.files['file']
@@ -1154,6 +1235,9 @@ def preview_pages_route():
 
 @app.route('/processar', methods=['POST'])
 def processar():
+    ip = get_real_ip()
+    if not _check_rate_limit(ip, 'processar', max_calls=30, window=60):
+        return jsonify({'error': 'Muitas requisicoes. Aguarde um momento.'}), 429
     data = request.json
     operacao = data.get('operacao')
     session_id = data.get('session_id')
@@ -1396,8 +1480,13 @@ def auditoria_dados():
     else:
         pwd = request.args.get('pwd', '')
         page = int(request.args.get('page', 1))
+    ip_req = get_real_ip()
+    if not _check_audit_brute(ip_req):
+        return jsonify({'error': 'Demasiadas tentativas. Tente em 5 minutos.'}), 429
     if pwd != AUDIT_PASSWORD:
+        _record_audit_fail(ip_req)
         return jsonify({'error': 'Senha incorreta'}), 403
+    _clear_audit_fail(ip_req)
     per = 50
     offset = (page - 1) * per
     conn = get_db()
