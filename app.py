@@ -15,6 +15,7 @@ except ImportError:
     REQUESTS_AVAILABLE = False
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
@@ -110,6 +111,28 @@ def init_audit_db():
     conn.commit(); conn.close()
 
 init_audit_db()
+
+# ─── Limpeza automática de ficheiros temporários ──────────────────────────────
+import time as _time
+def _cleanup_old_files():
+    """Remove uploads e outputs com mais de 2 horas."""
+    while True:
+        _time.sleep(3600)
+        now = _time.time()
+        for folder in ['uploads', 'outputs']:
+            if not os.path.isdir(folder):
+                continue
+            for entry in os.scandir(folder):
+                try:
+                    if now - entry.stat().st_mtime > 7200:
+                        if entry.is_dir():
+                            shutil.rmtree(entry.path)
+                        else:
+                            os.remove(entry.path)
+                except Exception:
+                    pass
+threading.Thread(target=_cleanup_old_files, daemon=True).start()
+
 
 def get_real_ip():
     for h in ('X-Forwarded-For', 'X-Real-IP', 'CF-Connecting-IP'):
@@ -1053,7 +1076,6 @@ def telemetria():
     """Recebe dados de tecnologia do cliente (browser, ecrã, rede...)"""
     try:
         d = request.json or {}
-        session_id = d.get('session_id')
         ip = get_real_ip()
         ts = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         conn = get_db()
@@ -1109,7 +1131,7 @@ def preview_pages_route():
         return jsonify({'error': 'pymupdf não instalado', 'cmd': 'py -m pip install pymupdf'}), 400
     data = request.json
     session_id = data.get('session_id')
-    max_pages = int(data.get('max_pages', 100))
+    max_pages = int(data.get('max_pages', 50))
     filepath = session_get(session_id)
     if not filepath or not os.path.exists(filepath):
         return jsonify({'error': 'Sessão expirada. Faça o upload novamente.'}), 400
@@ -1230,11 +1252,11 @@ def mesclar():
     nome_saida = request.form.get('nome_saida', 'documento_mesclado')
     if len(files) < 2:
         return jsonify({'error': 'Envie pelo menos 2 arquivos'}), 400
+    temps = []
     try:
         session_id = str(uuid.uuid4())[:8]
         pasta = os.path.join(app.config['OUTPUT_FOLDER'], session_id)
         os.makedirs(pasta, exist_ok=True)
-        temps = []
         for file in files:
             if file and allowed_file(file.filename):
                 fp = os.path.join(app.config['UPLOAD_FOLDER'], f"{session_id}_{secure_filename(file.filename)}")
@@ -1242,14 +1264,16 @@ def mesclar():
         if len(temps) < 2:
             return jsonify({'error': 'Arquivos inválidos'}), 400
         arquivos, total = mesclar_pdfs(temps, pasta, nome_saida)
-        for f in temps:
-            if os.path.exists(f): os.remove(f)
         return jsonify({
             'success': True, 'session_id': session_id,
             'total_paginas': total, 'arquivos': arquivos, 'operacao': 'mesclar'
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    finally:
+        for f in temps:
+            try: os.remove(f)
+            except: pass
 
 @app.route('/download/<session_id>/<filename>')
 def download_file(session_id, filename):
@@ -1344,6 +1368,8 @@ def app_stats():
 
 @app.route('/limpar/<session_id>', methods=['POST'])
 def limpar_sessao(session_id):
+    if not re.match(r'^[a-f0-9]{8}$', session_id):
+        return jsonify({'error': 'Sessão inválida'}), 400
     pasta = os.path.join(app.config['OUTPUT_FOLDER'], session_id)
     if os.path.exists(pasta): shutil.rmtree(pasta)
     for fn in os.listdir(app.config['UPLOAD_FOLDER']):
@@ -1359,12 +1385,17 @@ def limpar_sessao(session_id):
 def auditoria_login():
     return render_template('auditoria.html')
 
-@app.route('/auditoria/dados')
+@app.route('/auditoria/dados', methods=['GET','POST'])
 def auditoria_dados():
-    pwd = request.args.get('pwd', '')
+    if request.method == 'POST':
+        body = request.get_json(silent=True) or {}
+        pwd = body.get('pwd', '')
+        page = int(request.args.get('page', body.get('page', 1)))
+    else:
+        pwd = request.args.get('pwd', '')
+        page = int(request.args.get('page', 1))
     if pwd != AUDIT_PASSWORD:
         return jsonify({'error': 'Senha incorreta'}), 403
-    page = int(request.args.get('page', 1))
     per = 50
     offset = (page - 1) * per
     conn = get_db()
@@ -1411,9 +1442,12 @@ def auditoria_dados():
         'stats': stats
     })
 
-@app.route('/auditoria/export')
+@app.route('/auditoria/export', methods=['GET','POST'])
 def auditoria_export():
-    pwd = request.args.get('pwd', '')
+    if request.method == 'POST':
+        pwd = request.form.get('pwd', '')
+    else:
+        pwd = request.args.get('pwd', '')
     if pwd != AUDIT_PASSWORD:
         return jsonify({'error': 'Sem autorização'}), 403
     conn = get_db()
@@ -1452,4 +1486,4 @@ if __name__ == '__main__':
     print(f"{'='*65}\n")
     print(f"   auditoria : http://localhost:5000/auditoria  (senha: {AUDIT_PASSWORD})")
     print(f"{'='*65}\n")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true', host='0.0.0.0', port=5000)

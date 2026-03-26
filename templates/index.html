@@ -1487,7 +1487,7 @@ document.getElementById('btnExecutar').addEventListener('click', async () => {
         const d = await r.json();
         if (d.error) { showToast(d.error, 'error'); }
         else { currentSessionId = d.session_id; showResults(d); addHistory(currentOperation, currentPdfInfo.filename); showToast(TRANSLATIONS[currentLang].toastSuccess, 'success'); }
-    } catch(e) { showToast('Erro ao processar', 'error'); }
+    } catch(e) { showToast('Erro ao processar', 'error'); document.getElementById('btnExecutar').disabled = false; }
     hideProgress();
 });
 
@@ -1497,6 +1497,13 @@ function parsePages(str) {
 }
 
 // ─── Results ──────────────────────────────────────────────────────────────────
+
+function _esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function showResults(data) {
     document.getElementById('resultPages').textContent = data.total_paginas;
     document.getElementById('resultFiles').textContent = data.arquivos.length;
@@ -1520,7 +1527,7 @@ function showResults(data) {
         item.innerHTML = `
             <div class="file-item-info">
                 <div class="file-item-icon ${isImg ? 'img' : 'pdf'}"><i class="fas fa-${isImg ? 'image' : 'file-pdf'}"></i></div>
-                <div class="file-item-details"><h4 title="${a.nome}">${a.nome}</h4><p>${detail}</p></div>
+                <div class="file-item-details"><h4 title="${_esc(a.nome)}">${_esc(a.nome)}</h4><p>${detail}</p></div>
             </div>
             <a href="/download/${data.session_id}/${encodeURIComponent(a.nome)}" class="btn btn-primary btn-download" download>
                 <i class="fas fa-download"></i> Baixar
@@ -1540,6 +1547,16 @@ document.getElementById('btnDownloadAll').addEventListener('click', () => { if (
 document.getElementById('btnNovo').addEventListener('click', resetAll);
 
 function resetAll() {
+    if (currentSessionId) {
+        fetch(`/limpar/${currentSessionId}`, { method: 'POST' }).catch(() => {});
+    }
+    if (mergeFiles.length) {
+        mergeFiles = [];
+        const ml = document.getElementById('mergeList');
+        if (ml) ml.innerHTML = '';
+        const ms = document.getElementById('mergeSection');
+        if (ms) ms.classList.remove('show');
+    }
     currentFile = null; currentPdfInfo = null; currentOperation = null; currentSessionId = null;
     fileInput.value = '';
     uploadArea.classList.remove('has-file');
@@ -1647,7 +1664,7 @@ async function loadPreviewPages() {
     try {
         const r = await fetch('/preview_pages', {
             method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ session_id: currentPdfInfo.session_id, max_pages: 200 })
+            body: JSON.stringify({ session_id: currentPdfInfo.session_id, max_pages: 50 })
         });
         const d = await r.json();
         loading.style.display = 'none';
@@ -1856,17 +1873,6 @@ document.getElementById('btnExecutarImgPdf').addEventListener('click', async () 
 });
 
 // ─── Novas operações no switch do executar ────────────────────────────────────────
-const _origBtnExec = document.getElementById('btnExecutar');
-_origBtnExec.addEventListener('click', () => {}, true); // garante que o handler principal já existe
-// patch inline para as novas operações (inserido no switch existente via evento beforeclick)
-document.addEventListener('pdfExtraPayload', (e) => {
-    const { op, payload } = e.detail;
-    if (op === 'redimensionar')    payload.formato      = document.getElementById('redimFormato')?.value || 'A4';
-    if (op === 'cabecalho_rodape') { payload.cabecalho  = document.getElementById('cabTexto')?.value || ''; payload.rodape = document.getElementById('rodTexto')?.value || ''; }
-    if (op === 'qrcode')           { payload.url        = document.getElementById('qrUrl')?.value || 'https://example.com'; payload.posicao = document.getElementById('qrPosicao')?.value; payload.tamanho_mm = +(document.getElementById('qrTamanho')?.value || 25); }
-    if (op === 'paginas_branco')   payload.posicoes     = parsePages(document.getElementById('brancoPos')?.value || '');
-    if (op === 'ajustar_brilho')   payload.fator        = (+(document.getElementById('brilhoFator')?.value || 120)) / 100;
-});
 
 // ─── Mapa de painéis (adicionar novas entradas) ────────────────────────────────────────
 // Injetar no mapa de painéis existente (pós-carregamento)
@@ -1896,28 +1902,6 @@ document.querySelectorAll('.operation-btn').forEach(btn => {
     }, true); // capture phase para rodar antes
 });
 
-// Override do btnExecutar para novas operações
-const _origExecHandler = document.getElementById('btnExecutar').onclick;
-document.getElementById('btnExecutar').addEventListener('click', async () => {
-    if (!currentPdfInfo || !currentOperation) return;
-    const extras = {
-        redimensionar:   () => ({ formato:      document.getElementById('redimFormato')?.value }),
-        cabecalho_rodape:() => ({ cabecalho:    document.getElementById('cabTexto')?.value, rodape: document.getElementById('rodTexto')?.value }),
-        qrcode:          () => ({ url:          document.getElementById('qrUrl')?.value || 'https://example.com', posicao: document.getElementById('qrPosicao')?.value, tamanho_mm: +(document.getElementById('qrTamanho')?.value || 25) }),
-        paginas_branco:  () => ({ posicoes:     parsePages(document.getElementById('brancoPos')?.value || '') }),
-        ajustar_brilho:  () => ({ fator:        (+(document.getElementById('brilhoFator')?.value || 120)) / 100 }),
-    };
-    if (!extras[currentOperation]) return; // deixa o handler principal tratar
-    showProgress('Processando...', 'Aguarde...');
-    const payload = { operacao: currentOperation, session_id: currentPdfInfo.session_id, ...extras[currentOperation]() };
-    try {
-        const r = await fetch('/processar', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        const d = await r.json();
-        if (d.error) { showToast(d.error, 'error'); }
-        else { currentSessionId = d.session_id; showResults(d); addHistory(currentOperation, currentPdfInfo.filename); showToast(TRANSLATIONS[currentLang].toastSuccess, 'success'); }
-    } catch(e) { showToast('Erro ao processar', 'error'); }
-    hideProgress();
-}, false);
 
 // ─── Estatísticas públicas ───────────────────────────────────────────────────────────────
 async function loadStats() {
