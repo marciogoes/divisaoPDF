@@ -16,7 +16,7 @@ except ImportError:
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024  # 1GB
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['OUTPUT_FOLDER'] = 'outputs'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -1565,7 +1565,7 @@ def auditoria_export():
 
 @app.errorhandler(413)
 def request_entity_too_large(e):
-    return jsonify({'error': 'Arquivo muito grande. Limite: 500 MB'}), 413
+    return jsonify({'error': 'Arquivo muito grande. Limite: 1 GB'}), 413
 
 if __name__ == '__main__':
     print(f"\n{'='*65}")
